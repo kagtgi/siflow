@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import os
+import time
 from typing import Optional
 
 import torch
@@ -160,6 +161,12 @@ def train(cfg) -> str:
     gen = torch.Generator(device=device).manual_seed(int(cfg.seed) + 1234)
     autocast_dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
 
+    # Wall-clock guard: stop + checkpoint before the Colab session limit so a
+    # notebook is guaranteed to finish (re-run to resume from the checkpoint).
+    wall0 = time.time()
+    max_hours = float(getattr(cfg.train, "max_hours", 0) or 0)
+    max_seconds = max_hours * 3600.0
+
     for step in range(start, total):
         beta = 1.0 if hard_label else beta_schedule(step, total, float(cfg.train.beta_max),
                                                      float(cfg.train.anneal_frac))
@@ -186,9 +193,14 @@ def train(cfg) -> str:
             logger.write(logs, echo_keys=["step", "loss", "satd", "vel", "beta", "lr"])
         if int(cfg.train.ckpt_every) > 0 and (step + 1) % int(cfg.train.ckpt_every) == 0:
             ckpt.save(out_dir, step, head, ema, opt, scheduler, cfg=cfg)
+        if max_seconds and (time.time() - wall0) >= max_seconds:
+            ckpt.save(out_dir, step, head, ema, opt, scheduler, cfg=cfg)
+            log(f"reached max_hours={max_hours} at step {step}/{total}; checkpointed and stopping. "
+                f"Re-run this notebook (re-import the checkpoint) to resume.")
+            return out_dir
 
     ckpt.save(out_dir, total - 1, head, ema, opt, scheduler, cfg=cfg)
-    log(f"training done -> {out_dir}")
+    log(f"training done ({total} steps) -> {out_dir}")
     return out_dir
 
 

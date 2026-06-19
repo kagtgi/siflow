@@ -49,8 +49,10 @@ pytest tests/ -q                      # SUBS, nested masking, head, reduced-supp
 > **New here? Read [`TUTORIAL.md`](TUTORIAL.md)** — a step-by-step guide to running the notebooks
 > sequentially (Drive output saving, resuming after timeouts, a quick smoke pass, troubleshooting).
 
-Each notebook is one session; it clones the repo, mounts Drive, does its part, and saves artifacts to
-`MyDrive/siflow/` so the next notebook resumes. Long runs checkpoint to Drive and survive timeouts.
+Each notebook is one session: it clones the repo, does its part, and **auto-downloads a `.zip` of its
+output**; the next notebook **uploads that zip** to continue (no Drive needed — set `USE_DRIVE=True`
+to persist on Drive instead). Training parts have an **11h wall-clock guard** that checkpoints and
+stops cleanly before the session limit, so re-running resumes. Every part finishes well under 12h.
 
 | Notebook | Does | Fills |
 |---|---|---|
