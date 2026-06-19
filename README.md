@@ -46,6 +46,9 @@ pytest tests/ -q                      # SUBS, nested masking, head, reduced-supp
 
 ## The notebook pipeline (Colab A100-80GB)
 
+> **New here? Read [`TUTORIAL.md`](TUTORIAL.md)** — a step-by-step guide to running the notebooks
+> sequentially (Drive output saving, resuming after timeouts, a quick smoke pass, troubleshooting).
+
 Each notebook is one session; it clones the repo, mounts Drive, does its part, and saves artifacts to
 `MyDrive/siflow/` so the next notebook resumes. Long runs checkpoint to Drive and survive timeouts.
 
