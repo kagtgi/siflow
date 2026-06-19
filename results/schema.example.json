@@ -1,0 +1,24 @@
+{
+  "run_id": "siflow_mdlm",
+  "method": "SIFLOW",
+  "teacher": "kuleshov-group/mdlm-owt",
+  "tokenizer": "gpt2",
+  "source": "reproduced",
+  "cite": null,
+  "seed": 0,
+  "git_sha": "abc1234",
+  "config_hash": "0123456789ab",
+  "metrics": {
+    "k=1": {"gen_ppl": 0.0, "mauve": 0.0, "lambada_acc": 0.0,
+            "distinct_1": 0.0, "distinct_2": 0.0, "distinct_3": 0.0, "distinct_4": 0.0,
+            "rep_4": 0.0, "nfe": 1, "tok_per_s": 0.0, "latency_ms": 0.0, "n_tokens": 0},
+    "k=2": {"gen_ppl": 0.0, "mauve": 0.0, "lambada_acc": 0.0, "nfe": 2, "tok_per_s": 0.0},
+    "k=4": {"gen_ppl": 0.0, "mauve": 0.0, "lambada_acc": 0.0, "nfe": 4, "tok_per_s": 0.0},
+    "k=8": {"gen_ppl": 0.0, "mauve": 0.0, "lambada_acc": 0.0, "nfe": 8, "tok_per_s": 0.0}
+  },
+  "analysis": {
+    "straightness": {"ratio_mean": 1.0, "ratio_std": 0.0, "ratio_median": 1.0, "ratios": [], "pca_trajectory": null, "teacher": "kuleshov-group/mdlm-owt"},
+    "onestep_entropy": {"entropy_mean": 0.0, "entropy_std": 0.0, "entropy": []}
+  },
+  "train": {"total_steps": 20000, "final_satd": 0.0, "wall_clock_h": 0.0}
+}

@@ -1,0 +1,25 @@
+# SIFLOW-D: Dream-7B teacher (Qwen vocab ~152k), head-only on Dream's own backbone.
+# Reduced top-m support keeps the large-vocab tensors small.
+defaults: default.yaml
+run_id: siflow_dream
+
+teacher:
+  kind: dream
+  name: Dream-org/Dream-v0-Base-7B
+  dtype: bf16
+  auto_class: AutoModel        # set to a *ForMaskedLM/ForCausalLM variant if needed
+  mask_token: null             # set to the mask token str/id if tokenizer.mask_token_id is unset
+  attn_implementation: null
+
+data:
+  source: live                 # set to "cache" + cache_dir to use run_5's precomputed shards
+  seq_len: 256
+  tokens_path: runs/data/dream_256.npy
+  cache_dir: null
+  reduced_m: 128
+
+train:
+  batch_size: 32
+  micro_batch: 4
+  total_steps: 15000
+  lam_reg: 0.0                  # MDM regulariser is full-vocab only

@@ -1,0 +1,25 @@
+# SIFLOW-G: DiffusionGemma-26B-A4B teacher (Gemma vocab ~256k, MoE), head-only.
+# ~50GB fp16 weights fit on an A100-80GB alongside the tiny head.
+defaults: default.yaml
+run_id: siflow_gemma
+
+teacher:
+  kind: gemma
+  name: google/diffusiongemma-26B-A4B-it
+  dtype: bf16
+  auto_class: AutoModelForMaskedLM   # adjust to the model card's documented class
+  mask_token: null
+  attn_implementation: eager
+
+data:
+  source: live                       # or "cache" + cache_dir from run_7
+  seq_len: 256
+  tokens_path: runs/data/gemma_256.npy
+  cache_dir: null
+  reduced_m: 128
+
+train:
+  batch_size: 16
+  micro_batch: 2
+  total_steps: 12000
+  lam_reg: 0.0

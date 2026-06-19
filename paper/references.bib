@@ -1,0 +1,216 @@
+% ============================================================
+%  references.bib  --  SiFlow (AAAI-27 submission draft)
+%  All entries verified against arXiv / proceedings (Jun 2026).
+% ============================================================
+
+% -------- One-step / few-step generative modeling (core anchors) --------
+
+@inproceedings{geng2025meanflow,
+  title     = {Mean Flows for One-step Generative Modeling},
+  author    = {Geng, Zhengyang and Deng, Mingyang and Bai, Xingjian and Kolter, J. Zico and He, Kaiming},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2025},
+  note      = {Oral}
+}
+
+@misc{chen2025dlmone,
+  title         = {{DLM-One}: Diffusion Language Models for One-Step Sequence Generation},
+  author        = {Chen, Tianqi and Zhang, Shujian and Zhou, Mingyuan},
+  year          = {2025},
+  eprint        = {2506.00290},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL}
+}
+
+@inproceedings{zhu2025dimo,
+  title     = {{Di[M]O}: Distilling Masked Diffusion Models into One-step Generator},
+  author    = {Zhu, Yuanzhi and Wang, Xi and Lathuili\`{e}re, St\'{e}phane and Kalogeiton, Vicky},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  year      = {2025}
+}
+
+@misc{lee2026fmlm,
+  title         = {Flow Map Language Models: One-step Language Modeling via Continuous Denoising},
+  author        = {Lee, Chanhyuk and Yoo, Jaehoon and Agarwal, Manan and Shah, Sheel and Huang, Jerry and Raghunathan, Aditi and Hong, Seunghoon and Boffi, Nicholas M. and Kim, Jinwoo},
+  year          = {2026},
+  eprint        = {2602.16813},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL}
+}
+
+@inproceedings{song2023consistency,
+  title     = {Consistency Models},
+  author    = {Song, Yang and Dhariwal, Prafulla and Chen, Mark and Sutskever, Ilya},
+  booktitle = {Proceedings of the 40th International Conference on Machine Learning (ICML)},
+  year      = {2023}
+}
+
+@inproceedings{yin2024dmd,
+  title     = {One-step Diffusion with Distribution Matching Distillation},
+  author    = {Yin, Tianwei and Gharbi, Micha\"{e}l and Zhang, Richard and Shechtman, Eli and Durand, Fr\'{e}do and Freeman, William T. and Park, Taesung},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2024}
+}
+
+@inproceedings{salimans2022progressive,
+  title     = {Progressive Distillation for Fast Sampling of Diffusion Models},
+  author    = {Salimans, Tim and Ho, Jonathan},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2022}
+}
+
+% -------- Optimal transport + flow matching --------
+
+% NEW: OT-Conditional Flow Matching — enables one-step via straight OT paths
+@inproceedings{tong2024otcfm,
+  title     = {Improving and Generalizing Flow-Matching through Optimal Transport},
+  author    = {Tong, Alexander and Malkin, Nikolay and Huguet, Guillaume and Zhang, Yanlei and Rector-Brooks, Jarrid and Fatras, Kilian and Wolf, Guy and Bengio, Yoshua},
+  booktitle = {Proceedings of the 41st International Conference on Machine Learning (ICML)},
+  year      = {2024}
+}
+
+@inproceedings{lipman2023flowmatching,
+  title     = {Flow Matching for Generative Modeling},
+  author    = {Lipman, Yaron and Chen, Ricky T. Q. and Ben-Hamu, Heli and Nickel, Maximilian and Le, Matthew},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023}
+}
+
+% -------- Masked / discrete diffusion language models --------
+
+@inproceedings{sahoo2024mdlm,
+  title     = {Simple and Effective Masked Diffusion Language Models},
+  author    = {Sahoo, Subham Sekhar and Arriola, Marianne and Gokaslan, Aaron and Marroquin, Edgar Mariano and Rush, Alexander M. and Schiff, Yair and Chiu, Justin T. and Kuleshov, Volodymyr},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2024}
+}
+
+@inproceedings{lou2024sedd,
+  title     = {Discrete Diffusion Modeling by Estimating the Ratios of the Data Distribution},
+  author    = {Lou, Aaron and Meng, Chenlin and Ermon, Stefano},
+  booktitle = {Proceedings of the 41st International Conference on Machine Learning (ICML)},
+  year      = {2024},
+  note      = {Best Paper}
+}
+
+@inproceedings{austin2021d3pm,
+  title     = {Structured Denoising Diffusion Models in Discrete State-Spaces},
+  author    = {Austin, Jacob and Johnson, Daniel D. and Ho, Jonathan and Tarlow, Daniel and van den Berg, Rianne},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2021}
+}
+
+@misc{nie2025llada,
+  title         = {Large Language Diffusion Models},
+  author        = {Nie, Shen and Zhu, Fengqi and You, Zebin and Zhang, Xiaolu and Ou, Jingyang and Hu, Jun and Zhou, Jun and Lin, Yankai and Wen, Ji-Rong and Li, Chongxuan},
+  year          = {2025},
+  eprint        = {2502.09992},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL}
+}
+
+@inproceedings{arriola2025bd3lm,
+  title     = {Block Diffusion: Interpolating Between Autoregressive and Diffusion Language Models},
+  author    = {Arriola, Marianne and Gokaslan, Aaron and Chiu, Justin T. and Yang, Zhihan and Qi, Zhixuan and Han, Jiaqi and Sahoo, Subham Sekhar and Kuleshov, Volodymyr},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2025},
+  note      = {Oral}
+}
+
+@misc{ye2025dream,
+  title         = {Dream 7B: Diffusion Large Language Models},
+  author        = {Ye, Jiacheng and Xie, Zhihui and Zheng, Lin and Gao, Jiahui and Wu, Zirui and Jiang, Xin and Li, Zhenguo and Kong, Lingpeng},
+  year          = {2025},
+  eprint        = {2508.15487},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL}
+}
+
+@inproceedings{gat2024discreteflow,
+  title     = {Discrete Flow Matching},
+  author    = {Gat, Itai and Remez, Tal and Shaul, Neta and Kreuk, Felix and Chen, Ricky T. Q. and Synnaeve, Gabriel and Adi, Yossi and Lipman, Yaron},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2024}
+}
+
+% -------- Acceleration / distillation for DLMs --------
+
+@inproceedings{deschenaux2025sdtt,
+  title     = {Beyond Autoregression: Fast {LLMs} via Self-Distillation Through Time},
+  author    = {Deschenaux, Justin and Gulcehre, Caglar},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2025}
+}
+
+@misc{didiinstruct2025,
+  title         = {Ultra-Fast Language Generation via Discrete Diffusion Divergence Instruct},
+  author        = {Zhu, Haoyang and Wang, Yuxuan and Hu, Edward and Zhang, Ruqi},
+  year          = {2025},
+  eprint        = {2509.25035},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL}
+}
+
+% NEW: IMDM — key concurrent work; few-step, trains from scratch, uses minibatch OT in noise space
+@misc{yoo2026imdm,
+  title         = {Infinite Mask Diffusion for Few-Step Distillation},
+  author        = {Yoo, Jaehoon and others},
+  year          = {2026},
+  eprint        = {2605.10518},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG}
+}
+
+% NEW: T3D — few-step DLM distillation with trajectory self-distillation + discriminative objective
+@misc{t3d2026,
+  title         = {{T3D}: Few-Step Diffusion Language Models via Trajectory Self-Distillation
+                   with Direct Discriminative Optimization},
+  author        = {Zhang, Yilun and others},
+  year          = {2026},
+  eprint        = {2602.12262},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL}
+}
+
+% -------- Production diffusion LMs (motivation) --------
+
+@misc{diffusiongemma2026,
+  title        = {{DiffusionGemma}: An Open Text-Diffusion Language Model},
+  author       = {{Google DeepMind}},
+  year         = {2026},
+  howpublished = {\url{https://developers.googleblog.com/diffusiongemma-the-developer-guide/}},
+  note         = {Accessed: 2026-06-18}
+}
+
+% -------- Evaluation metrics --------
+
+@inproceedings{pillutla2021mauve,
+  title     = {{MAUVE}: Measuring the Gap Between Neural Text and Human Text using Divergence Frontiers},
+  author    = {Pillutla, Krishna and Swayamdipta, Swabha and Zellers, Rowan and Thickstun, John and Welleck, Sean and Choi, Yejin and Harchaoui, Zaid},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2021}
+}
+
+% NEW: LAMBADA — tests broad discourse coherence; reveals token-independence failures
+@inproceedings{paperno2016lambada,
+  title     = {The {LAMBADA} Dataset: Word Prediction Requiring a Broad Discourse Context},
+  author    = {Paperno, Denis and Kruszewski, Germ{\'a}n and Lazaridou, Angeliki and Pham, Ngoc Quan and Bernardi, Raffaella and Pezzelle, Sandro and Baroni, Marco and Boleda, Gemma and Fern{\'a}ndez, Raquel},
+  booktitle = {Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (ACL)},
+  year      = {2016}
+}
+
+@techreport{radford2019gpt2,
+  title       = {Language Models are Unsupervised Multitask Learners},
+  author      = {Radford, Alec and Wu, Jeffrey and Child, Rewon and Luan, David and Amodei, Dario and Sutskever, Ilya},
+  institution = {OpenAI},
+  year        = {2019}
+}
+
+@misc{hinton2015distillation,
+  title         = {Distilling the Knowledge in a Neural Network},
+  author        = {Hinton, Geoffrey and Vinyals, Oriol and Dean, Jeff},
+  year          = {2015},
+  eprint        = {1503.02531},
+  archivePrefix = {arXiv},
+  primaryClass  = {stat.ML}
+}

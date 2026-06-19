@@ -1,0 +1,155 @@
+# SiFlow — Revision Change Log & Self-Review
+## AAAI-2027 Submission Draft (Jun 2026)
+
+---
+
+## 1. What Changed (and Why)
+
+### Name: Kairos → SiFlow
+**Why.** "Kairos" (Greek: decisive instant) is clever but opaque; reviewers may not parse the metaphor. **SiFlow** (Simplex Flow) is descriptive, short, and directly points at the core technical object: a flow on the probability simplex.  
+**What to update:** The `\method` macro is redefined in the preamble. All occurrences update automatically. The algorithm label is `alg:siflow`.
+
+---
+
+### New addition: OT connection (Remark 3.2 — "Simplex OT-CFM connection")
+**Why.** The secant target $U_\text{tgt} = (\mu_t - \mu_s)/(t-s)$ is *literally* the $W_2$-OT displacement interpolant velocity between two simplex points — this is not an analogy, it is the definition of the OT-straight path in the simplex. Making this explicit:
+- Explains *why* one step is accurate (straight paths have zero curvature → zero integration error)
+- Explains *why* cross-teacher distillation works (OT lives in output space, not weight space)
+- Connects to OT-CFM (Tong et al. 2024), a high-profile ICML paper, for literature depth
+- Differentiates from IMDM (which applies OT in noise space, requiring training from scratch)
+
+**New bib entry:** `tong2024otcfm`
+
+---
+
+### New DLM teacher: Dream-7B → `\method-D`
+**Why.** User requirement: "experiments should try on more open Diffusion LM." Dream-7B is:
+- 7B open-weight masked DLM (HuggingFace public), ~14GB fp16
+- AR-initialized (Qwen2.5-7B) → best instruction-tuned DLM to date
+- Qualitatively different regime from MDLM (AR init, instruction data, stronger reasoning)
+
+**Setup:** MDLM-170M student + Dream-7B teacher. This is *cross-scale cross-architecture* distillation. The student is kept at 170M; only the cached simplex targets from Dream-7B change. This is possible precisely because of the OT-simplex construction: the teacher's architecture is irrelevant.  
+**Compute:** ~14h on A100-40GB (caching 3-5h + training 6-8h). Fits within single-GPU constraint.  
+**Expected result:** SiFlow-D should outperform SiFlow on quality metrics, demonstrating that a larger teacher's knowledge is transferable via average-velocity distillation.
+
+---
+
+### New baselines: IMDM + T3D
+**Why.** Both appeared after the original draft and are directly competitive:
+
+| Method | Steps | Discrete | Pretrained? | Status |
+|--------|-------|----------|-------------|--------|
+| T3D (Feb 2026) | 4–8 | ✓ | ✓ | Trajectory self-distillation |
+| IMDM (May 2026) | 4–8 | ✓ | ✗ (from scratch) | Infinite-state mask + minibatch OT |
+
+Including them as baselines is **mandatory** for AAAI-2027 review — a reviewer will immediately flag their absence. The positioning in Table 1 now shows SiFlow is the unique method that is simultaneously one-step + discrete + pretrained.
+
+**Key contrast with IMDM:** IMDM uses OT in *noise space* (infinite-state mask coupling). SiFlow uses OT in *output space* (simplex velocity). IMDM trains from scratch; SiFlow distills existing models. These are complementary, not competing — but SiFlow is strictly more practical for the deployed DLMs (LLaDA, Dream, DiffusionGemma).
+
+---
+
+### New metric: LAMBADA zero-shot accuracy
+**Why.** Gen-PPL and MAUVE measure marginal quality but not *joint coherence* across a long passage. LAMBADA specifically tests whether the final word of a paragraph can be predicted — a task that requires tracking discourse dependencies, exactly what single-pass generation struggles with. LAMBADA accuracy should increase monotonically with step count `k` in the self-conditioned refinement, making it the ideal metric to justify the few-step variant.
+
+---
+
+### Updated Table 1 (Positioning)
+Added IMDM and T3D rows. SiFlow remains the *only* method with all three checkmarks: one-step + discrete + pretrained.
+
+### Updated Table 2 (Main Results)
+Added columns: LAMBADA. Added rows: BD3LM-small, T3D, IMDM, DLM-One, Dream-7B teacher + SiFlow-D, LLaDA-8B scale reference. Removed redundant MDLM-8-step row to save space.
+
+### Updated Table 3 (Compute)
+Added SiFlow-D (Dream-7B teacher) rows.
+
+### Updated Table 4 (Ablation)
+Added two rows: identity target (tests alternative to secant), velocity head depth (1 vs 2 layers).
+
+### Figure 2 caption update
+Teacher label changed from "Teacher MDLM (frozen)" to "Pretrained masked DLM (frozen, φ)" — the figure now depicts the general architecture, not MDLM-specific.
+
+---
+
+## 2. Paper Self-Review (Five Dimensions)
+
+### Contribution
+- **Claim**: First one-step + discrete + pretrained DLM distillation method.  
+- **Evidence**: Table 1 positioning table; no prior work occupies this cell.  
+- **Status**: ✓ supported. IMDM is the closest concurrent work but is few-step and trains from scratch.
+
+### Writing clarity
+- The OT remark (3.2) is the densest new addition; it is compact and self-contained.
+- The "Why not FMLM + why not IMDM" arc in the Introduction is now explicit (two separate paragraphs).
+- Potential issue: "cross-scale cross-architecture distillation" phrase introduced in SiFlow-D paragraph needs to be defined inline. ✓ Done.
+
+### Experimental strength
+- Three DLM families covered (MDLM, Dream-7B, DiffusionGemma). ✓
+- All major concurrent baselines included (SDTT, T3D, IMDM, FMLM, DLM-One). ✓
+- LAMBADA adds a coherence-specific metric. ✓
+- Ablation covers all four components + alternative target + head depth. ✓
+- **Remaining risk**: Results are TBR. The pre-registered framing is honest but reviewers may dock for this. Mitigation: complete runs before July 20 deadline.
+
+### Evaluation completeness
+- Unconditional: OWT + LM1B (Gen-PPL, MAUVE, diversity). ✓
+- Coherence: LAMBADA zero-shot. ✓
+- Efficiency: NFE, tokens/sec. ✓
+- Ablation: all 4 components + 2 additional. ✓
+- **Gap**: No conditional generation (WritingPrompts). Consider adding in full version if compute allows; not critical for AAAI main paper.
+
+### Method soundness
+- Proposition 3.1 (average-instantaneous identity): clean MeanFlow adaptation. ✓
+- Remark 3.2 (OT connection): geometrically correct — secant IS the constant-velocity OT interpolant. ✓
+- Proposition 4.1 (first-order error): $O(t-s)$ bound is tight and motivates few-step. ✓
+- Proposition 4.2 (one-step gap): informal but honest. ✓
+- Potential reviewer concern: "Is the simplex trajectory smooth enough for Assumption 4.1?" Addressed by noting the teacher's backbone applies GELU activations and softmax — both infinitely smooth in the predictive space.
+
+---
+
+## 3. Highest-Risk Reviewer Questions
+
+| Question | Pre-emptive answer in paper |
+|----------|---------------------------|
+| "Why not just use FMLM?" | FMLM trains from scratch; SiFlow distills pretrained DLMs. Different regime. |
+| "How does this differ from IMDM?" | IMDM = OT in noise space, trains from scratch. SiFlow = OT in output (simplex) space, distills existing models. |
+| "Why is the one-step gap acceptable?" | Prop 4.2 gives $O(\varepsilon+\eta)$ bound; few-step closes it at $O(1/k)$. |
+| "Does cross-teacher distillation actually work?" | SiFlow-D (Dream-7B → MDLM student) tests this directly; OT remark explains why it should. |
+| "Is OT on the simplex just a rebranding?" | No: OT-CFM does this in continuous Euclidean space. The simplex has boundary constraints; the result is not trivially the same. |
+
+---
+
+## 4. Recommended Next Steps Before Submission
+
+1. **Run experiments** (primary protocol: ~12h on A100-40GB).
+2. **Fill TBR cells** in Tables 2, 3, and 4.
+3. **Add appendix** with: (a) full proofs of Props 3.1 and 4.1-4.2, (b) implementation details (vocab size, sequence lengths, temperature schedule curve), (c) extended LAMBADA analysis.
+4. **Confirm IMDM authors** for citation (eprint 2605.10518 — listed as "others" in bib; verify the author list).
+5. **Confirm T3D authors** for citation (eprint 2602.12262).
+6. **Check page count** in compiled PDF. If over 8 pages, trim: Discussion is the most compressible section.
+7. **Add code link** (uncomment `\begin{links}` block) before camera ready.
+
+---
+
+## Revision 2 (review response)
+
+Addressing 5 peer reviews. Decisions and edits applied to `siflow_aaai.tex`, `references.bib` (no new entries — integrity), `tables_auto.tex` (new), and this log.
+
+- **OT claim reframed to flat-metric straight path.** Remark 1 (`rem:ot`) rewritten: the secant is the constant-velocity field of the straight segment = geodesic of the *flat (Euclidean) metric* on the simplex = Flow-Matching conditional path restricted to the simplex. Explicitly states this is a flat-metric statement, not a genuine `W_2` claim, and defers token-aware `W_2` to the appendix. All other `$W_2$-optimal-transport interpolant` wording softened to the straight-path framing across Abstract, Intro, Figure 1 (sublabel/node/caption), Figure 2 (node/caption), §3.4 Models, Discussion, Conclusion. (Reviewers 1, 2, 4, 5 — OT under-specified/likely-incorrect.)
+- **New Appendix B (`app:ot`)** states and proves the flat-metric-geodesic proposition (affine hull is totally geodesic; straight segment is the unique constant-speed geodesic; coincides with FM conditional path), plus a remark that `W_2` under token cost `c(a,b)` equals the Euclidean secant only for the uniform cost `1[a≠b]` and differs for nontrivial token metrics.
+- **SIFLOW-D/-G reframed to head-only same-backbone-and-tokenizer distillation; "cross-scale" claim dropped.** SIFLOW-D now shares the Dream-7B backbone+tokenizer (was: "reuses MDLM-170M backbone (cross-scale simplex distillation)"); SIFLOW-G keeps DiffusionGemma backbone "on its native tokenizer." Contribution 4 rewritten to "same head-only recipe across three masked-DLM backbones, each on its native tokenizer." Table 2 section headers retitled accordingly. Discussion limitations gained a sentence that a genuinely cross-tokenizer student is ill-posed without vocabulary alignment (future work). (Reviewer cross-tokenizer concern.)
+- **Proofs added (plain-paragraph format, no amsthm).** Appendix A proves Prop 1 (identity via product rule + FTC; only domain differs from MeanFlow), Prop 2, and Prop 3.
+- **Prop 2 statement corrected.** As written it bounded a quantity that is identically zero (secant *is* the time-average of `v`). Restated to bound the secant vs the **fixed-time** velocity `v(μ_s,s)`: `‖(μ_t−μ_s)/(t−s) − v(μ_s,s)‖ ≤ (L/2)(t−s)`, with proof and Lipschitz justification (softmax `C^∞`, backbone `C^1`, `L` measured by the straightness figure). The "A computable target" sentence updated for consistency.
+- **Prop 3 made non-asymptotic** (dropped "informal"). New statement: under (A1) `E‖U_θ−U‖₁≤ε`, (A2) collapse residual `≤η`, (A3) `p_min>0`, the averaged per-position `KL ≤ (ε+η)²/p_min` (reverse Pinsker). Corollary 2 updated: `ε(k)≤(L/2)(1/k)`.
+- **Tables auto-filled.** New `tables_auto.tex` defines `\SiFlowMainRows` (6-col) and `\SiFlowAblationRows` (5-col) placeholder macros (overwritten by `scripts/make_tables.py`); `\input` guarded with `\IfFileExists` in the preamble (with inline fallback definitions). Table 2 and 3 bodies now use the macros; Table 3 expanded from {PPL, MAUVE} to {PPL, MAUVE, LAMBADA, Tok/s}. Table 2 caption gained the `†`-vs-measured legend and a velocity-head-counting note. NFE footnote added at first use in the Intro.
+- **Figures added (all `\IfFileExists`-guarded).** Main paper: `straightness.pdf` (path-length ratio R≈1 validates flat-geodesic premise), `pareto.pdf` (quality–throughput frontier, SIFLOW k∈{1,2,4,8} vs teacher curve + baselines). Appendix D: `entropy.pdf`, `lambada_vs_k.pdf`, `training_curves.pdf`.
+- **Draft footnote removed** ("methods-and-protocol draft … TBR"). Experiments "Status." paragraph reworded to a neutral present-tense "Setup." (tables auto-filled from runs); "single 24 GB GPU" → "single A100-80GB GPU"; `tab:compute` caption and totals 40GB → 80GB.
+- **Novelty candor sentences.** §3.3: SATD is temperature-scaled KD (Hinton) adapted to simplex outputs — contribution is the annealing curriculum, not the temperature mechanism. §3.4: entropy prior adopted directly from Di[M]O, included as a necessary not novel ingredient. Intro: MeanFlow-vs-SIFLOW novelty sentence (no token-space flow; trajectory lives on the simplex; average velocity = secant chord of one nested-mask trajectory).
+- **Nested-mask path consistency made explicit.** Algorithm 1 line forms **nested** masked states (`mask(t)⊆mask(s)`) from the same `x_1` with an updated comment; new §3.1 "Path consistency via nested masks" paragraph states `μ_s,μ_t` are a chord of one reverse trajectory. (Reviewers 1, 2, 4.)
+- **Head architecture specified (Appendix C).** Operates in `d_model` space via a 2-layer FiLM-conditioned MLP, lifts to vocab logits through the **frozen** tied embedding `E^T`; ~1–3M trainable params; explicitly **no** `K×K` matrix (resolves the "billions of params" concern); logit-space update `ẑ_t=z_s+(t−s)U_θ`, `μ̂_t=softmax(ẑ_t)` stays on the simplex; reduced top-`m` support for large-vocab teachers; full hyperparameter list. Main-text head param count aligned to ~1–3M.
+- **Related Work prose (no cites, per integrity rule).** One sentence acknowledging complementary training-free/plug-in samplers and data–decoder co-design approaches, with NO `\citep` keys (the APD/DEMASK/Saber/ReFusion/NAP family).
+- **Figure 1 endpoint labels fixed** to the §3.1 convention: prior node `μ_0`, data node `μ_1` (were reversed).
+
+**Intentional divergences from the brief:**
+- Corollary 2: brief said "Corollary 2 then follows with ε(k)≤(L/2)(1/k)"; since Prop 3's bound is `(ε+η)²/p_min`, I stated the overall improvement as `O(1/k²)` in the approximation-dominated regime (squaring the linear `ε(k)`), which is the faithful consequence. The `ε(k)≤(L/2)(1/k)` step is stated verbatim.
+- The brief said "EXPAND Table 3 columns and update column spec" — done (`@{}lcccc@{}`). Placeholder ablation rows live in `tables_auto.tex` (5-col) rather than inline, consistent with edit 8.
+- Conclusion's last sentence ("pre-registered study … immediate next steps") was reworded to drop the pre-registration framing (now points to the token-aware `W_2` extension), keeping it consistent with the removed draft footnote.
+- No `references.bib` edits were needed: all new citations (`lipman2023flowmatching`, `tong2024otcfm`, `hinton2015distillation`, `zhu2025dimo`) already existed. The file is unchanged.

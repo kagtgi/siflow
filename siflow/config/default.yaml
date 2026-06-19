@@ -1,0 +1,46 @@
+# Base config (merged underneath each experiment yaml via `defaults: default.yaml`).
+seed: 0
+run_id: siflow
+out_dir: null               # null -> resolved under the Drive / runs base dir
+
+schedule:
+  kind: loglinear           # loglinear (MDLM) | linear | cosine
+  eps: 1.0e-3
+
+head:
+  bottleneck: 1024
+  time_dim: 128
+  space: logit              # logit (primary) | prob (ablation)
+  mid_blocks: 0             # extra residual MLP blocks (head-depth ablation)
+
+data:
+  source: live              # live (teacher loaded) | cache (precomputed shards)
+  seq_len: 256
+  tokens_path: null         # live: path to [N, L] uint16 token chunks
+  cache_dir: null           # cache: dir with shards + manifest + embedding
+  reduced_m: 0              # 0 -> full vocab (MDLM); >0 -> top-m support (Dream/Gemma)
+
+train:
+  total_steps: 20000
+  batch_size: 64            # effective; split into micro_batch x grad-accum
+  micro_batch: 16
+  lr: 2.0e-4
+  wd: 0.01
+  warmup: 500
+  grad_clip: 1.0
+  beta_max: 2.0             # SATD temperature start (annealed to 1)
+  anneal_frac: 0.5
+  w_vel: 0.1                # secant / velocity-matching MSE weight
+  lam_reg: 0.05             # MDM self-consistency weight (full-vocab only)
+  lam_ent: 0.1              # entropy-injected prior rate
+  w_id: 0.0                 # MeanFlow identity term (off by default; ablation)
+  p0: 0.25                  # prob of forcing s=0 (one-step start)
+  p1: 0.25                  # prob of forcing t=1 (clean endpoint)
+  ema_decay: 0.999
+  log_every: 50
+  ckpt_every: 1000
+  eval_every: 0
+
+ablation:
+  no_avg_velocity: false    # Di[M]O-style direct 0->1 map (removes interval averaging)
+  hard_label: false         # beta=1 throughout (disables SATD annealing)

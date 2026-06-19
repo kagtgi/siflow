@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "siflow"
+version = "0.1.0"
+description = "SIFLOW: one-/few-step diffusion language models via average-velocity distillation on the probability simplex"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "SIFLOW authors" }]
+keywords = ["diffusion", "language-models", "distillation", "one-step", "flow-matching"]
+
+# NOTE: torch is intentionally NOT pinned here. On Colab the CUDA build of torch
+# ships preinstalled; pinning it would clobber the working GPU wheel. Install the
+# rest with `pip install -e .` and use requirements-colab.txt for the Colab extras.
+dependencies = [
+    "transformers>=4.44",
+    "tokenizers>=0.19",
+    "datasets>=2.20",
+    "safetensors>=0.4",
+    "numpy>=1.24",
+    "omegaconf>=2.3",
+    "tqdm>=4.66",
+    "matplotlib>=3.7",
+    "scikit-learn>=1.3",
+]
+
+[project.optional-dependencies]
+# Heavier / optional eval + Colab extras.
+eval = ["mauve-text>=0.4", "sacrebleu>=2.4"]
+dev = ["pytest>=7.4"]
+
+[project.urls]
+Repository = "https://github.com/"
+
+[tool.setuptools.packages.find]
+include = ["siflow*"]
+
+[tool.setuptools.package-data]
+siflow = ["config/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

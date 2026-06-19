@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Results: keep the schema example, ignore runtime outputs
+results/*.json
+!results/schema.example.json
+results/*.jsonl
+
+# Heavy artifacts (never commit weights / caches / data)
+checkpoints/
+ckpt/
+cache/
+data/
+*.safetensors
+*.pt
+*.ckpt
+*.npz
+*.arrow
+*.bin
+
+# Generated figures (regenerate via scripts/make_figures.py); keep the dir
+paper/figures/*.pdf
+!paper/figures/.gitkeep
+
+# LaTeX build artifacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.synctex.gz
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.toc
