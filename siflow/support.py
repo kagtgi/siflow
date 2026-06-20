@@ -1,6 +1,6 @@
 """Reduced-support (top-m) representation for large-vocabulary teachers.
 
-Dream (~152k) and DiffusionGemma (~256k) vocabularies make full-vocab student
+Dream (~152k) and LLaDA (~126k) vocabularies make full-vocab student
 tensors expensive. We restrict the SIFLOW loss to a per-(example, position)
 support of the ``m`` tokens carrying the most mass across *both* endpoints, plus
 a single folded ``rest`` bucket::

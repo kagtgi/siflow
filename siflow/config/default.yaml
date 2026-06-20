@@ -18,7 +18,7 @@ data:
   seq_len: 256
   tokens_path: null         # live: path to [N, L] uint16 token chunks
   cache_dir: null           # cache: dir with shards + manifest + embedding
-  reduced_m: 0              # 0 -> full vocab (MDLM); >0 -> top-m support (Dream/Gemma)
+  reduced_m: 0              # 0 -> full vocab (MDLM); >0 -> top-m support (Dream/LLaDA)
 
 train:
   total_steps: 20000

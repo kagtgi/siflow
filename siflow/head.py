@@ -114,7 +114,7 @@ class VelocityHead(nn.Module):
         """Velocity ``U``.
 
         * ``support_idx is None`` -> full ``[B, L, V]`` (MDLM).
-        * ``support_idx`` ``[B, L, m]`` -> gathered ``[B, L, m]`` (Dream / Gemma),
+        * ``support_idx`` ``[B, L, m]`` -> gathered ``[B, L, m]`` (Dream / LLaDA),
           avoiding materializing the full 152k/256k-wide tensor.
         """
         d = self.delta_h(h, s, t)                        # [B, L, H]

@@ -10,7 +10,7 @@ frozen. The secant target `(μ_t − μ_s)/(t − s)` is the constant-velocity f
 conditional paths in Flow Matching / OT-CFM, which is exactly when one-step integration is accurate.
 
 This repo is the full, runnable implementation behind the AAAI paper in [`paper/`](paper/), built to
-run on a **single A100-80GB in <12h sessions** via the step-by-step notebooks in [`notebooks/`](notebooks/).
+run on a **single A100-40GB in <12h sessions** via the two step-by-step notebooks in [`notebooks/`](notebooks/).
 
 ---
 
@@ -31,7 +31,7 @@ siflow/            # the library
   analysis/        # simplex-trajectory straightness, per-position entropy, training curves
   train.py         # distillation loop (live MDLM / live-reduced D/G / cached D/G)
 scripts/           # train, build_cache, evaluate, make_tables, make_figures (CLI)
-notebooks/         # run_0 .. run_8 — clone→data→train→eval→figures, resumable on Drive
+notebooks/         # nb1_mdlm + nb2_large_teachers — 2 notebooks, A100-40GB, <12h each
 paper/             # the AAAI LaTeX source; tables/figures auto-fill from results/
 tests/             # pytest: SUBS parity, nested-mask nesting, head budget, support mass, losses
 ```
@@ -44,38 +44,36 @@ pip install -r requirements-colab.txt # eval extras: mauve-text, sacrebleu, data
 pytest tests/ -q                      # SUBS, nested masking, head, reduced-support, losses
 ```
 
-## The notebook pipeline (Colab A100-80GB)
+## The notebook pipeline (Colab A100-40GB — just 2 notebooks)
 
-> **New here? Read [`TUTORIAL.md`](TUTORIAL.md)** — a step-by-step guide to running the notebooks
-> sequentially (Drive output saving, resuming after timeouts, a quick smoke pass, troubleshooting).
+> **New here? Read [`TUTORIAL.md`](TUTORIAL.md)** — a step-by-step guide (the one zip handoff,
+> resuming after a timeout, a quick smoke pass, troubleshooting).
 
-Each notebook is one session: it clones the repo, does its part, and **auto-downloads a `.zip` of its
-output**; the next notebook **uploads that zip** to continue (no Drive needed — set `USE_DRIVE=True`
-to persist on Drive instead). Training parts have an **11h wall-clock guard** that checkpoints and
-stops cleanly before the session limit, so re-running resumes. Every part finishes well under 12h.
+All paper results come from **two notebooks**, each fitting **one A100-40GB session in <12h** (no
+quantization). **NB1 needs no upload; for NB2 you just upload NB1's output zip and run all.** Every
+stage is guarded by an existence check and training auto-resumes from its checkpoint (11h wall-clock
+guard), so a session that ends early loses no work. Set `USE_DRIVE=True` to persist on Drive instead
+of the zip handoff.
 
-| Notebook | Does | Fills |
-|---|---|---|
-| `run_0_smoke` | unit tests + MDLM load + 1-step generate | — |
-| `run_1_mdlm_data_cache` | tokenize OpenWebText (train + disjoint val) | — |
-| `run_2_mdlm_train` | train the MDLM velocity head (20k steps, resumable) | — |
-| `run_3_mdlm_eval_figures` | SIFLOW k-sweep + teacher curve + AR + SDTT; figures | **Table 2** |
-| `run_4_mdlm_ablations` | retrain/eval ablation variants | **Table 3** |
-| `run_5_dream_cache` | Dream-7B setup + tokenize (optional cache) | — |
-| `run_6_dream_train_eval` | SIFLOW-D head-only train + eval | Table 2 (-D) |
-| `run_7_gemma_cache` | DiffusionGemma setup + tokenize (optional cache) | — |
-| `run_8_gemma_train_eval` | SIFLOW-G train + eval + **regenerate all tables/figures** | Table 2 (-G) |
+| Notebook | Upload at top | Does | Downloads | Fills |
+|---|---|---|---|---|
+| `nb1_mdlm` | — | tokenize OWT → train MDLM head → eval (k-sweep + teacher curve + AR + SDTT) → figures → 6 ablations | `nb1_mdlm_outputs.zip` | **Table 2 (MDLM) + Table 3** |
+| `nb2_large_teachers` | `nb1_mdlm_outputs.zip` | Dream-7B (-D) then LLaDA-8B (-L), head-only train+eval (teacher freed between), then **regenerate the final combined tables/figures** | `nb2_final_paper_artifacts.zip` | **Table 2 (-D / -L)** |
 
-After the runs, drop `paper/tables_auto.tex` and `paper/figures/*.pdf` into the paper tree and
-recompile — the tables and figures populate from `results/*.json`.
+Then unzip `nb2_final_paper_artifacts.zip` into `paper/` (drops `tables_auto.tex` + `figures/*.pdf`)
+and recompile — Tables 2–3 and the figures populate from `results/*.json`.
 
 ## Teachers (all real, all downloadable)
 
 | Variant | Teacher | Vocab | Notes |
 |---|---|---|---|
 | SIFLOW | [`kuleshov-group/mdlm-owt`](https://huggingface.co/kuleshov-group/mdlm-owt) (~170M) | GPT-2 | primary; teacher runs live, exact full-vocab loss. **HF forward returns raw logits — we re-apply SUBS ourselves** (`siflow/teacher/mdlm.py`). |
-| SIFLOW-D | [`Dream-org`](https://huggingface.co/Dream-org) Dream-7B | Qwen | head-only on Dream's backbone; reduced top-m loss |
-| SIFLOW-G | `google/diffusiongemma-26B-A4B-it` (MoE) | Gemma | head-only; ~50GB fp16 fits A100-80GB |
+| SIFLOW-D | [`Dream-org/Dream-v0-Base-7B`](https://huggingface.co/Dream-org/Dream-v0-Base-7B) | Qwen | head-only on Dream's backbone; reduced top-m loss; ~14GB fp16 |
+| SIFLOW-L | [`GSAI-ML/LLaDA-8B-Base`](https://huggingface.co/GSAI-ML/LLaDA-8B-Base) | LLaMA | head-only on LLaDA's backbone; reduced top-m loss; ~16GB fp16 (mask id 126336) |
+
+> All three teachers fit a **single A100-40GB in fp16** (no quantization). DiffusionGemma-26B (~50GB)
+> needs more than one 40GB card and is deferred to future multi-GPU work (`siflow/config/gemma.yaml`,
+> `siflow/teacher/gemma.py` are retained for that).
 
 > **Head-only, not cross-tokenizer.** The three teachers use three different tokenizers, so a single
 > "170M student distilled from Dream-7B" (regressing one vocabulary's simplex into another's) is

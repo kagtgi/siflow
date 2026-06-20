@@ -110,7 +110,7 @@ def eval_siflow(cfg, args, device):
     tok = _tokenizer(cfg, teacher)
     ref = _ref_texts(args.ref_tokens, tok, args.n_samples)
     scorer = GPT2Scorer(args.scorer, device=device)
-    res = _skeleton(cfg, method="SIFLOW")
+    res = _skeleton(cfg, method="SIFLOW" + (f"-{args.variant}" if args.variant else ""))
 
     L = int(cfg.data.seq_len)
     for k in args.k_list:
@@ -155,7 +155,7 @@ def eval_teacher(cfg, args, device):
     ref = _ref_texts(args.ref_tokens, tok, args.n_samples)
     scorer = GPT2Scorer(args.scorer, device=device)
     sched = NoiseSchedule(kind=cfg.schedule.kind, eps=float(cfg.schedule.eps))
-    res = _skeleton(cfg, method="teacher")
+    res = _skeleton(cfg, method="teacher" + (f"-{args.variant}" if args.variant else ""))
 
     L = int(cfg.data.seq_len)
     for steps in args.steps:
@@ -208,6 +208,8 @@ def main():
     ap.add_argument("--system", choices=["siflow", "teacher", "ar"], default="siflow")
     ap.add_argument("--out", required=True)
     ap.add_argument("--ckpt-dir", default=None)
+    ap.add_argument("--variant", default="",
+                    help="teacher-family tag for table rows: '' (MDLM), 'D' (Dream), 'L' (LLaDA)")
     ap.add_argument("--k-list", type=int, nargs="*", default=[1, 2, 4, 8], dest="k_list")
     ap.add_argument("--steps", type=int, nargs="*", default=[8, 32, 64, 1024])
     ap.add_argument("--n-samples", type=int, default=1000)

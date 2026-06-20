@@ -1,17 +1,18 @@
-"""Generic Hugging Face masked-DLM teacher (shared by Dream / DiffusionGemma).
+"""Generic Hugging Face masked-DLM teacher (shared by Dream-7B and LLaDA-8B).
 
-These are large teachers used only by the *offline cache builder* (run_5 / run_7);
-training (run_6 / run_8) reads the cache and never reloads the backbone.
+Both are masked-token predictors: a single forward on partially-masked ids yields
+per-position logits over the vocabulary. We apply the same SUBS parameterization
+as for MDLM (mask column -> -inf, revealed positions pinned one-hot) using the
+teacher's own mask-token id, and -- for these large vocabularies -- regress on a
+reduced top-m support during training (see ``siflow/support.py``).
 
-Both Dream-7B and DiffusionGemma are masked-token predictors: a single forward
-on partially-masked ids yields per-position logits over the vocabulary. We apply
-the same SUBS parameterization as for MDLM (mask column -> -inf, revealed
-positions pinned one-hot) using the teacher's own mask-token id.
-
-Because the exact public class / mask token of these 2026 releases may shift,
-loading is defensive: we try several ``Auto*`` classes and several places the
-mask id might live, and raise a clear error if none work so the user can set
-``auto_class`` / ``mask_token`` in the config.
+The teacher runs *live* on a single A100-40GB alongside the tiny velocity head;
+no offline cache is required. Because the exact public class / mask token of these
+releases may shift, loading is defensive: we try several ``Auto*`` classes and
+several places the mask id might live (raising a clear error so the user can set
+``auto_class`` / ``mask_token`` in the config), and the final hidden state the
+velocity head needs is captured robustly -- via ``output_hidden_states`` when the
+forward supports it, else via a forward hook on the un-embed (lm_head) module.
 """
 from __future__ import annotations
 
@@ -74,6 +75,24 @@ class HFMaskedDLMTeacher(Teacher):
         self._embedding = emb
         self.mask_index = self._resolve_mask_index(mask_token)
 
+        # Robust hidden-state capture. Some custom masked-DLM forwards (e.g. LLaDA)
+        # do not honour ``output_hidden_states`` and only return ``.logits``. The
+        # velocity head needs the final hidden state, so we also register a forward
+        # hook on the output-embedding (un-embed / lm_head) module and grab its
+        # input -- which IS the final-layer hidden state [B, L, H]. Whichever path
+        # produces a tensor first wins in ``logits_and_hidden``.
+        self._hidden_cache: dict = {}
+        self._hook_handle = None
+        try:
+            head_mod = self.model.get_output_embeddings()
+        except Exception:  # noqa: BLE001 - not all models expose this
+            head_mod = None
+        if head_mod is not None:
+            def _grab_hidden(_m, inp, _out):
+                if inp and torch.is_tensor(inp[0]):
+                    self._hidden_cache["h"] = inp[0].detach()
+            self._hook_handle = head_mod.register_forward_hook(_grab_hidden)
+
     def _resolve_mask_index(self, mask_token: Optional[str | int]) -> int:
         if isinstance(mask_token, int):
             return mask_token
@@ -98,12 +117,24 @@ class HFMaskedDLMTeacher(Teacher):
     @torch.no_grad()
     def logits_and_hidden(self, input_ids: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         input_ids = input_ids.to(self.device)
-        out = self.model(input_ids, output_hidden_states=True, return_dict=True)
+        self._hidden_cache.pop("h", None)
+        try:
+            out = self.model(input_ids, output_hidden_states=True, return_dict=True)
+        except TypeError:
+            # custom forward that does not accept output_hidden_states/return_dict
+            out = self.model(input_ids)
         raw = getattr(out, "logits", None)
+        if raw is None and isinstance(out, (tuple, list)) and len(out):
+            raw = out[0]
         if raw is None:
             raise RuntimeError(
                 f"{self.name} ({self._auto_class}) returned no logits; "
                 "set auto_class to a *ForMaskedLM/ForCausalLM variant in the config")
-        hidden = out.hidden_states[-1]
+        hs = getattr(out, "hidden_states", None)
+        hidden = hs[-1] if hs is not None else self._hidden_cache.get("h")
+        if hidden is None:
+            raise RuntimeError(
+                f"{self.name}: could not obtain a hidden state (no output_hidden_states "
+                "and no un-embed input captured); the velocity head needs it")
         subs = self.subs(raw.float(), input_ids)
         return subs, hidden

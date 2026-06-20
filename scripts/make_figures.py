@@ -109,7 +109,7 @@ def fig_lambada(results, out):
     plt.figure(figsize=(4.0, 3.0))
     plotted = False
     for r in results:
-        if r.get("method") != "SIFLOW":
+        if not r.get("method", "").startswith("SIFLOW"):
             continue
         ks, accs = [], []
         for key, m in r.get("metrics", {}).items():

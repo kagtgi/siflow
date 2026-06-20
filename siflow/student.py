@@ -48,7 +48,7 @@ class Student(nn.Module):
         ``z_s`` are the teacher SUBS logits at level ``s`` (may contain ``-inf``);
         ``h_s`` the teacher hidden state at level ``s``.
 
-        Reduced support (Dream / Gemma): ``z_s`` has shape ``[B, L, m+1]`` where the
+        Reduced support (Dream / LLaDA): ``z_s`` has shape ``[B, L, m+1]`` where the
         first ``m`` columns are the union-top-K logits and the last is the folded
         ``rest`` bucket. ``support_idx`` is ``[B, L, m]``; the head only displaces the
         ``m`` real tokens and the ``rest`` bucket is carried along with zero velocity.

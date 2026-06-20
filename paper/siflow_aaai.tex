@@ -64,7 +64,7 @@
 
 % CHANGE 2: Abstract — adds Dream-7B, OT connection, IMDM context
 \begin{abstract}
-Diffusion language models (DLMs) promise parallel, bidirectional text generation, yet in practice they remain slow: matching autoregressive quality requires tens to hundreds of denoising steps. In the image domain, one-step generation is now routine, but the leading construction---a learnable \emph{flow map}---has been argued to be unavailable to discrete masked diffusion, the paradigm behind the largest open DLMs. We revisit this claim. We introduce \method{}, a framework that distills a \emph{pretrained} masked DLM into a one- or few-step generator by learning an \emph{average unmasking velocity} on the probability simplex of the teacher's predictive distribution. \method{} adapts the average-velocity identity of MeanFlow~\citep{geng2025meanflow} to the discrete setting, and we show that the resulting secant target is the constant-velocity field of a straight-line path on the simplex---the discrete analog of the straightened conditional paths used in Flow Matching and OT-CFM~\citep{lipman2023flowmatching,tong2024otcfm}. Unlike concurrent work that requires training from scratch~\citep{yoo2026imdm}, \method{} pairs this construction with a temperature-annealed distillation objective and an entropy-injected prior to distill any existing pretrained masked DLM---including MDLM, Dream-7B, and DiffusionGemma, each on its native tokenizer---without modifying their architectures. We give a self-contained construction, a first-order error analysis, and a reproducible experimental protocol designed to run on a single GPU, covering three open DLM families and isolating the contribution of each component on standard language-modeling benchmarks.
+Diffusion language models (DLMs) promise parallel, bidirectional text generation, yet in practice they remain slow: matching autoregressive quality requires tens to hundreds of denoising steps. In the image domain, one-step generation is now routine, but the leading construction---a learnable \emph{flow map}---has been argued to be unavailable to discrete masked diffusion, the paradigm behind the largest open DLMs. We revisit this claim. We introduce \method{}, a framework that distills a \emph{pretrained} masked DLM into a one- or few-step generator by learning an \emph{average unmasking velocity} on the probability simplex of the teacher's predictive distribution. \method{} adapts the average-velocity identity of MeanFlow~\citep{geng2025meanflow} to the discrete setting, and we show that the resulting secant target is the constant-velocity field of a straight-line path on the simplex---the discrete analog of the straightened conditional paths used in Flow Matching and OT-CFM~\citep{lipman2023flowmatching,tong2024otcfm}. Unlike concurrent work that requires training from scratch~\citep{yoo2026imdm}, \method{} pairs this construction with a temperature-annealed distillation objective and an entropy-injected prior to distill any existing pretrained masked DLM---including MDLM, Dream-7B, and LLaDA-8B, each on its native tokenizer---without modifying their architectures. We give a self-contained construction, a first-order error analysis, and a reproducible experimental protocol designed to run on a single GPU, covering three open DLM families and isolating the contribution of each component on standard language-modeling benchmarks.
 \end{abstract}
 
 % ─────────────────────────── FIGURE 1: CONCEPT TEASER ────────────────────────
@@ -185,7 +185,7 @@ We argue the discrete barrier is an artifact of where one looks for the flow map
 
 We introduce \method{}, a distillation framework that turns any pretrained masked DLM into a one- or few-step generator. \method{} defines an \emph{average unmasking velocity} on the teacher's predictive simplex, derives the corresponding consistency identity as a discrete analog of MeanFlow, and distills it into a student that adds only a lightweight velocity head to the teacher backbone. To make single-pass generation trainable, \method{} adds a temperature-annealed simplex distillation loss and an entropy-injected prior adapted from Di[M]O; a cheap self-conditioned refinement recovers token dependencies in a few steps when desired.
 
-Plain MeanFlow assumes a continuous Euclidean state with a unique probability-flow ODE; discrete masked diffusion has no token-space flow, and naive distillation matches only the clean marginal, discarding the trajectory. \method{}'s contribution is identifying that the trajectory exists on the predictive simplex and that its average velocity---a secant chord of one nested-mask trajectory---is the regressable one-step target. This paper makes four contributions. First, we reframe one-step discrete diffusion as average-velocity learning on the predictive simplex (Figure~\ref{fig:overview}), give a flow-map analog where prior work assumed none, and connect the construction to the straightened conditional paths of Flow Matching and OT-CFM (Section~\ref{sec:method}). Second, we instantiate it as \method{}, a distillation procedure compatible with off-the-shelf masked DLMs without retraining from scratch (Figure~\ref{fig:pipeline}; Section~\ref{sec:method}). Third, we provide a first-order error analysis relating one-step quality to the average-velocity approximation (Section~\ref{sec:theory}). Fourth, we specify a reproducible, single-GPU experimental protocol that applies the same head-only recipe across three masked-DLM backbones (MDLM-170M, Dream-7B, DiffusionGemma-26B-A4B), each on its native tokenizer (Section~\ref{sec:experiments}).
+Plain MeanFlow assumes a continuous Euclidean state with a unique probability-flow ODE; discrete masked diffusion has no token-space flow, and naive distillation matches only the clean marginal, discarding the trajectory. \method{}'s contribution is identifying that the trajectory exists on the predictive simplex and that its average velocity---a secant chord of one nested-mask trajectory---is the regressable one-step target. This paper makes four contributions. First, we reframe one-step discrete diffusion as average-velocity learning on the predictive simplex (Figure~\ref{fig:overview}), give a flow-map analog where prior work assumed none, and connect the construction to the straightened conditional paths of Flow Matching and OT-CFM (Section~\ref{sec:method}). Second, we instantiate it as \method{}, a distillation procedure compatible with off-the-shelf masked DLMs without retraining from scratch (Figure~\ref{fig:pipeline}; Section~\ref{sec:method}). Third, we provide a first-order error analysis relating one-step quality to the average-velocity approximation (Section~\ref{sec:theory}). Fourth, we specify a reproducible, single-GPU experimental protocol that applies the same head-only recipe across three masked-DLM backbones (MDLM-170M, Dream-7B, LLaDA-8B), each on its native tokenizer, on a single A100-40GB (Section~\ref{sec:experiments}).
 
 \section{Background and Related Work}
 \label{sec:background}
@@ -304,7 +304,7 @@ The state of a masked DLM is a discrete sequence, but its \emph{output} is not. 
 \begin{equation}
 \bm{\mu}^i_\tau \;=\; p_\phi\!\left(x^i_0 \mid \xtok_\tau\right) \;\in\; \simplex ,
 \end{equation}
-a point on the $(K\!-\!1)$-simplex. As $\tau$ decreases from $1$ (fully masked) to $0$ (clean), and as the teacher's reverse process reveals context, this point moves: from a context-only prediction near the prior toward a near-vertex one-hot at the realized token. The induced curve $\tau\mapsto\bm{\mu}^i_\tau$ is a well-defined trajectory on a smooth manifold, even though the underlying tokens are discrete. \method{} performs all of its geometry on the product of per-position simplices, rather than in token space. This is the key move: it sidesteps the non-existence of a token-space flow map by working with the object the model already produces, and it applies without modification to any masked DLM family---MDLM, Dream-7B, or DiffusionGemma.
+a point on the $(K\!-\!1)$-simplex. As $\tau$ decreases from $1$ (fully masked) to $0$ (clean), and as the teacher's reverse process reveals context, this point moves: from a context-only prediction near the prior toward a near-vertex one-hot at the realized token. The induced curve $\tau\mapsto\bm{\mu}^i_\tau$ is a well-defined trajectory on a smooth manifold, even though the underlying tokens are discrete. \method{} performs all of its geometry on the product of per-position simplices, rather than in token space. This is the key move: it sidesteps the non-existence of a token-space flow map by working with the object the model already produces, and it applies without modification to any masked DLM family---MDLM, Dream-7B, or LLaDA-8B.
 
 To keep notation aligned with MeanFlow, we reverse the time axis for generation: write $s\in[0,1]$ with $s=0$ the fully masked prior and $s=1$ the clean data, so generation runs $0\to1$. We suppress the position index $i$ when clear from context and treat $\bm{\mu}$ as the stacked simplex state over all positions.
 
@@ -467,16 +467,16 @@ These results explain the expected quality--step trade-off and motivate reportin
 \label{sec:experiments}
 
 \paragraph{Setup.}
-This section describes the evaluation protocol. The setup, baselines, metrics, and ablations below are fixed, and the numeric cells in Tables~\ref{tab:main}--\ref{tab:ablation} are auto-filled from the runs described in Table~\ref{tab:compute} (Appendix~\ref{app:impl}). The protocol is deliberately scoped to a \emph{single} A100-80GB GPU so that every reported number is reproducible without a cluster.
+This section describes the evaluation protocol. The setup, baselines, metrics, and ablations below are fixed, and the numeric cells in Tables~\ref{tab:main}--\ref{tab:ablation} are auto-filled from the runs described in Table~\ref{tab:compute} (Appendix~\ref{app:impl}). The protocol is deliberately scoped to a \emph{single} A100-40GB GPU (two notebooks, ${<}12$h each) so that every reported number is reproducible without a cluster.
 
-% CHANGE 11: Models paragraph — primary teacher is MDLM; Dream-7B added as -D; DiffusionGemma kept as -G; SEDD-small demoted to ablation
+% Models: primary teacher MDLM; Dream-7B (-D) and LLaDA-8B (-L) as larger backbones (each fits A100-40GB); DiffusionGemma deferred to future multi-GPU work
 \paragraph{Models.}
 {\sloppy
 The primary teacher is MDLM~\citep{sahoo2024mdlm} ($\sim$170M, DiT backbone, public OpenWebText checkpoint), chosen because it is small, open, and the canonical masked DLM. The student reuses this backbone and adds a two-layer velocity head ($\sim$1--3M trainable parameters; it operates in $d_{\text{model}}$ space and lifts to logits via the frozen tied embedding, never a $K\times K$ matrix---see Appendix~\ref{app:impl}), initialized from the teacher.
 
-\textbf{\method{}-D: Dream-7B teacher.} Dream-7B~\citep{ye2025dream} is a 7B-parameter open masked DLM initialized from Qwen2.5-7B ($\sim$14\,GB fp16), covering a qualitatively different training regime---AR initialization, instruction tuning, and a superior quality-speed tradeoff at 5--20 steps. The student shares the Dream-7B backbone and tokenizer, training only the velocity head; teacher targets are cached offline at $\le\!64$ steps. \method{}-D validates cross-architecture generalization: the simplex-secant construction is agnostic to the teacher's internals.
+\textbf{\method{}-D: Dream-7B teacher.} Dream-7B~\citep{ye2025dream} is a 7B-parameter open masked DLM initialized from Qwen2.5-7B ($\sim$14\,GB fp16), covering a qualitatively different training regime---AR initialization, instruction tuning, and a superior quality-speed tradeoff at 5--20 steps. The student shares the Dream-7B backbone and tokenizer, training only the velocity head with the teacher run live under a reduced top-$m$ support (no offline cache); the whole variant fits a single A100-40GB. \method{}-D validates cross-architecture generalization: the simplex-secant construction is agnostic to the teacher's internals.
 
-\textbf{\method{}-G: DiffusionGemma teacher.} DiffusionGemma-26B-A4B~\citep{diffusiongemma2026} is a publicly released discrete diffusion LM (26B total, 3.8B active via sparse MoE; fp16 inference $\approx$7.6\,GB active weights). The student is initialized from the DiffusionGemma backbone, on its native tokenizer, and adds only the velocity head. Teacher targets are cached offline. We designate this variant \method{}-G; it validates that \method{} generalizes to large, MoE-based teachers and produces a one-step generator at billion-parameter scale.
+\textbf{\method{}-L: LLaDA-8B teacher.} LLaDA-8B~\citep{nie2025llada} is an 8B-parameter open masked DLM ($\sim$16\,GB fp16) from a distinct model family---a LLaMA-style backbone trained from scratch as a diffusion LM---with its own tokenizer. The student shares the LLaDA-8B backbone and tokenizer and again trains only the velocity head, live with a reduced top-$m$ support, on a single A100-40GB. \method{}-L confirms that the simplex-secant recipe transfers, unchanged, to a third architecture and tokenizer at the 8B scale. DiffusionGemma-26B~\citep{diffusiongemma2026} would add a sparse-MoE teacher, but at $\sim$50\,GB it exceeds a single 40\,GB card; we leave it to future multi-GPU work.
 
 }% end sloppy
 \paragraph{Data.}
@@ -504,9 +504,9 @@ Generative perplexity (Gen-PPL) under a held-out GPT-2-Large scorer; MAUVE for d
 \caption{Unconditional generation on OWT/LM1B.
   Arrows indicate better direction. ``--'' denotes a cell pending the runs in Table~\ref{tab:compute}.
   Gen-PPL and MAUVE evaluated on OWT; LAMBADA is zero-shot accuracy.
-  \method{}-D uses Dream-7B as teacher; \method{}-G uses DiffusionGemma-26B-A4B.
+  \method{}-D uses Dream-7B and \method{}-L uses LLaDA-8B (both head-only on a single A100-40GB).
   $^\dagger$: number reported by the cited paper under its own protocol; all other rows
-  measured by us on a single GPU. Tok/s and step counts include the velocity-head pass.}
+  measured by us on a single A100-40GB. Tok/s and step counts include the velocity-head pass.}
 \label{tab:main}
 \small
 \begin{tabular}{lccccc}
@@ -514,19 +514,6 @@ Generative perplexity (Gen-PPL) under a held-out GPT-2-Large scorer; MAUVE for d
 Method & Steps & Gen-PPL $\downarrow$ & MAUVE $\uparrow$ & LAMBADA $\uparrow$ & Tok/s $\uparrow$ \\
 \midrule
 \SiFlowMainRows
-\midrule
-\multicolumn{6}{l}{\itshape Head-only distillation on larger backbones (each on its native tokenizer):} \\
-Dream-7B teacher~\citep{ye2025dream}   & $\sim$50 & -- & -- & -- & -- \\
-\textbf{\method{}-D (ours)}           & 1      & -- & -- & -- & -- \\
-\textbf{\method{}-D (ours)}           & 4      & -- & -- & -- & -- \\
-\midrule
-\multicolumn{6}{l}{\itshape DiffusionGemma backbone (head-only; A100-80GB):} \\
-DiffusionGemma~\citep{diffusiongemma2026} & $\sim$1000 & -- & -- & -- & -- \\
-\textbf{\method{}-G (ours)}           & 1      & -- & -- & -- & -- \\
-\textbf{\method{}-G (ours)}           & 4      & -- & -- & -- & -- \\
-\midrule
-\multicolumn{6}{l}{\itshape Scale reference (different evaluation protocol):} \\
-LLaDA-8B~\citep{nie2025llada}         & $\sim$256 & -- & -- & -- & -- \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -572,33 +559,30 @@ Beyond Table~\ref{tab:ablation}, we sweep the temperature schedule $\beta$, the 
 \end{figure}
 
 \paragraph{Compute feasibility.}
-Table~\ref{tab:compute} fixes the budget. The student is $\sim$170M, trained in bf16 with AdamW at learning rate $1\!\times\!10^{-4}$ on sequences of length $256$ (primary) up to $1024$ (secondary). Teacher targets are cached for a $\le\!2\!\times\!10^{5}$-sequence subset with reverse rollouts capped at $\le\!64$ steps. The full primary study fits in under $12$ hours on a single A100-80GB.
+Table~\ref{tab:compute} fixes the budget. Only the velocity head is trained, in bf16 with AdamW at learning rate $2\!\times\!10^{-4}$ on sequences of length $256$. The protocol is split into two notebooks, each fitting one A100-40GB session in under $12$ hours. NB1 runs the entire MDLM primary study live---tokenization, head distillation, the $k$-sweep and baseline evaluations, and the ablation suite. NB2 trains and evaluates the two larger backbones (Dream-7B then LLaDA-8B) head-only with a reduced top-$m$ support, freeing the teacher between them so each fits the 40\,GB card, and regenerates the final tables. Every training stage checkpoints under an 11-hour wall-clock guard and resumes on re-run, so a session that ends early loses no work.
 
 \begin{table}[t]
 \centering
-\caption{Single-GPU compute budget. Primary targets ${<}12$\,h on A100-80GB.}
+\caption{Two-notebook, single-GPU budget. Each notebook fits one A100-40GB
+  session in ${<}12$\,h; every training stage checkpoints and resumes.}
 \label{tab:compute}
 \scriptsize
 \begin{tabular}{@{}llr@{}}
 \toprule
 Phase & Config & Time \\
 \midrule
-Cache targets & ${\le}200$k seqs, ${\le}64$ steps & 2--3\,h \\
-\method{} distil & 30--60k steps, bs\,32 & 6--8\,h \\
-Eval & 5k samples, all baselines & 1--2\,h \\
-Ablations & shared cache, head retrain & 2--3\,h \\
+\multicolumn{3}{l}{\itshape NB1: MDLM-170M primary study (full-vocab, live teacher)} \\
+Tokenize OWT & ${\sim}160$k seqs, $L{=}256$ & ${\sim}0.5$\,h \\
+\method{} distil & 15k steps, bs\,64 & 3--4\,h \\
+Eval & 1k samples, $k$-sweep + baselines & 1--2\,h \\
+Ablations & 6 variants, 4k steps each & 4--5\,h \\
+\multicolumn{2}{l}{\textbf{Total NB1 (single A100-40\,GB)}} & ${<}12$\,h \\
 \midrule
-\multicolumn{2}{l}{\textbf{Total primary (single A100-80\,GB)}} & ${<}12$\,h \\
-\midrule
-\multicolumn{3}{l}{\itshape \method{}-D (Dream-7B teacher)} \\
-Cache -D & Dream-7B fp16, bs\,8 & 3--5\,h \\
-Distil -D & head-only, same protocol & 6--8\,h \\
-\multicolumn{2}{l}{\textbf{Total \method{}-D (A100-80\,GB)}} & ${<}14$\,h \\
-\midrule
-\multicolumn{3}{l}{\itshape \method{}-G (DiffusionGemma teacher)} \\
-Cache -G & 3.8B active, fp16, bs\,4 & 3--5\,h \\
-Distil -G & head-only, same protocol & 6--8\,h \\
-\multicolumn{2}{l}{\textbf{Total \method{}-G (A100-80\,GB)}} & ${<}14$\,h \\
+\multicolumn{3}{l}{\itshape NB2: larger backbones, head-only, reduced top-$m$ (live)} \\
+\method{}-D & Dream-7B (${\sim}14$\,GB), 8k steps & 4--5\,h \\
+\method{}-L & LLaDA-8B (${\sim}16$\,GB), 8k steps & 4--5\,h \\
+Eval + final tables & both, $k\in\{1,4\}$ & 1--2\,h \\
+\multicolumn{2}{l}{\textbf{Total NB2 (single A100-40\,GB)}} & ${<}12$\,h \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -607,17 +591,17 @@ Distil -G & head-only, same protocol & 6--8\,h \\
 \label{sec:discussion}
 
 % CHANGE 16: Discussion updated — OT connection elaborated; IMDM contrast added; multi-teacher point added
-\method{} rests on a single conceptual move---reading the flow map off the teacher's predictive simplex---which both rebuts the ``no discrete flow map'' framing and keeps the method compatible with pretrained masked DLMs. The straight-path interpretation (Remark~\ref{rem:ot}) explains why cross-architecture distillation is natural: because the target is a straight path in the shared output simplex, the student need not replicate the teacher's internal representations---only track that path. This is what enables the same velocity head to distill MDLM, Dream-7B, and DiffusionGemma with identical training code.
+\method{} rests on a single conceptual move---reading the flow map off the teacher's predictive simplex---which both rebuts the ``no discrete flow map'' framing and keeps the method compatible with pretrained masked DLMs. The straight-path interpretation (Remark~\ref{rem:ot}) explains why cross-architecture distillation is natural: because the target is a straight path in the shared output simplex, the student need not replicate the teacher's internal representations---only track that path. This is what enables the same velocity head to distill MDLM, Dream-7B, and LLaDA-8B with identical training code.
 
 Concurrent work IMDM~\citep{yoo2026imdm} independently arrives at a related geometric insight---it introduces an infinite-state mask that makes the factorization error bound arbitrarily small, and uses minibatch OT to couple training pairs. The key difference is one of where the geometry lives: IMDM applies OT coupling in \emph{noise} space (and \emph{replaces} the masking structure, requiring training from scratch), whereas \method{} regresses a straight path in the \emph{output} simplex of any existing masked DLM. Whether the two approaches can be combined---using IMDM's noise-space OT coupling to sharpen the simplex-space target---is a natural extension.
 
-Several limitations bound the claims. The secant target is first-order (Proposition~\ref{prop:approx}), so the one-step limit is expected to trail the few-step variant; we therefore report both and treat few-step as the headline. The self-conditioned refinement recovers token dependencies only approximately; a coupling-based sampler that enforces joint structure is a natural extension. The protocol is single-GPU by design, so it validates the mechanism at MDLM/170M scale and as head-only distillation on the larger Dream-7B and DiffusionGemma backbones (\method{}-D/-G); whether the one-step gap continues to narrow with student capacity is an empirical question. A genuinely cross-tokenizer student---regressing one vocabulary's simplex trajectory into another vocabulary's simplex---is ill-posed without an explicit vocabulary alignment, and we leave it to future work; the variants here keep each student on its teacher's native tokenizer. Finally, faster DLM inference lowers the cost of large-scale text generation, with the attendant dual-use considerations common to generative language models.
+Several limitations bound the claims. The secant target is first-order (Proposition~\ref{prop:approx}), so the one-step limit is expected to trail the few-step variant; we therefore report both and treat few-step as the headline. The self-conditioned refinement recovers token dependencies only approximately; a coupling-based sampler that enforces joint structure is a natural extension. The protocol is single-GPU by design, so it validates the mechanism at MDLM/170M scale and as head-only distillation on the larger Dream-7B and LLaDA-8B backbones (\method{}-D/-L), each fitting a single A100-40GB; whether the one-step gap continues to narrow with student capacity, and whether the recipe extends to sparse-MoE teachers such as DiffusionGemma-26B (which needs more than one 40\,GB card), are empirical questions for future multi-GPU work. A genuinely cross-tokenizer student---regressing one vocabulary's simplex trajectory into another vocabulary's simplex---is ill-posed without an explicit vocabulary alignment, and we leave it to future work; the variants here keep each student on its teacher's native tokenizer. Finally, faster DLM inference lowers the cost of large-scale text generation, with the attendant dual-use considerations common to generative language models.
 
 \section{Conclusion}
 \label{sec:conclusion}
 
 % CHANGE 17: Conclusion — name replaced; mentions OT connection and multi-teacher scope
-We presented \method{}, a framework for one- and few-step generation from pretrained masked diffusion language models. By defining an average unmasking velocity on the teacher's predictive simplex, \method{} adapts the MeanFlow identity to discrete masked diffusion and supplies a flow-map analog where prior work assumed none. We showed that the secant target is the constant-velocity field of a straight path on the predictive simplex---the discrete analog of the straightened conditional paths of Flow Matching and OT-CFM---explaining why cross-architecture distillation requires no architectural coupling, from any pretrained masked DLM, including Dream-7B and DiffusionGemma. A temperature-annealed distillation loss and an entropy-injected prior make single-pass generation trainable, and the construction reuses off-the-shelf DLMs rather than training from scratch. Our study covers three open DLM families on a single GPU; tightening the one-step gap toward the few-step result, and a token-aware $W_2$ formulation of the simplex target (Appendix~\ref{app:ot}), are natural next steps.
+We presented \method{}, a framework for one- and few-step generation from pretrained masked diffusion language models. By defining an average unmasking velocity on the teacher's predictive simplex, \method{} adapts the MeanFlow identity to discrete masked diffusion and supplies a flow-map analog where prior work assumed none. We showed that the secant target is the constant-velocity field of a straight path on the predictive simplex---the discrete analog of the straightened conditional paths of Flow Matching and OT-CFM---explaining why cross-architecture distillation requires no architectural coupling, from any pretrained masked DLM, including Dream-7B and LLaDA-8B. A temperature-annealed distillation loss and an entropy-injected prior make single-pass generation trainable, and the construction reuses off-the-shelf DLMs rather than training from scratch. Our study covers three open DLM families on a single GPU; tightening the one-step gap toward the few-step result, and a token-aware $W_2$ formulation of the simplex target (Appendix~\ref{app:ot}), are natural next steps.
 
 \appendix
 
@@ -712,8 +696,9 @@ Secant pairs $(\bm{\mu}_s,\bm{\mu}_t)$ are formed from a single clean sequence u
 ($\mathrm{mask}(t)\subseteq\mathrm{mask}(s)$), so the two states lie on one reverse trajectory
 (Section~\ref{sec:simplex}). The entropy-injected prior (Section~\ref{sec:prior}) mixes a small
 fraction of uniform-token replacements into the masked input. For large-vocabulary teachers
-(Dream, DiffusionGemma) we regress on a reduced top-$m$ support of the teacher predictive and fold
-the remaining mass into a single ``rest'' bucket, which keeps the head and the cached targets compact.
+(Dream-7B, LLaDA-8B) we regress on a reduced top-$m$ support ($m{=}128$) of the teacher predictive
+and fold the remaining mass into a single ``rest'' bucket, which keeps the head and the live targets
+compact and lets the 7--8B teacher run alongside the head on a single 40\,GB card.
 
 \paragraph{Hyperparameters.}
 Unless noted: sequence length $256$, batch size $64$, AdamW with learning rate $2\times10^{-4}$ and
@@ -721,7 +706,10 @@ weight decay $0.01$, $500$-step linear warmup then cosine decay, $20$k training 
 temperature anneals $\beta_{\max}=2\to1$ on a cosine schedule over the first half of training. Loss
 weights are $\lambda_{\mathrm{ent}}=0.1$ (entropy prior), $w_{\mathrm{vel}}=0.1$ (velocity term), and
 $\lambda_{\mathrm{reg}}=0.05$ (MDM self-consistency). The prior-mix is $p_0=p_1=0.25$, EMA decay is
-$0.999$, and all reported numbers are averaged over seeds $\{0,1,2\}$.
+$0.999$, and all reported numbers are averaged over seeds $\{0,1,2\}$. For the larger backbones
+(Dream-7B, LLaDA-8B) the head and schedule are identical, but to fit a single A100-40GB we use batch
+size $16$ with a reduced top-$m{=}128$ support (so $\lambda_{\mathrm{reg}}{=}0$, as the MDM term is
+full-vocab only) and $8$k training steps.
 
 \section{Extended Ablations}
 \label{app:ablations}

@@ -9,7 +9,7 @@ All teachers return logits **after the SUBS parameterization** so that
 * the mask token never receives probability mass, and
 * already-revealed (unmasked) positions are pinned to their observed token.
 
-Concrete teachers (MDLM / Dream / DiffusionGemma) subclass this and only differ
+Concrete teachers (MDLM / Dream / LLaDA) subclass this and only differ
 in how they load the backbone and where the embedding / hidden states live.
 """
 from __future__ import annotations

@@ -24,6 +24,18 @@ REPORTED = [
     ("DLM-One$^\\dagger$~\\citep{chen2025dlmone}", "1"),
 ]
 
+# Teacher / SIFLOW labels per variant tag ("" = MDLM primary, "-D" = Dream, "-L" = LLaDA).
+TEACHER_LABEL = {
+    "teacher": "MDLM teacher~\\citep{sahoo2024mdlm}",
+    "teacher-D": "Dream-7B teacher~\\citep{ye2025dream}",
+    "teacher-L": "LLaDA-8B teacher~\\citep{nie2025llada}",
+}
+SIFLOW_LABEL = {
+    "SIFLOW": "\\textbf{\\method{} (ours)}",
+    "SIFLOW-D": "\\textbf{\\method{}-D (ours)}",
+    "SIFLOW-L": "\\textbf{\\method{}-L (ours)}",
+}
+
 
 def _fmt(vals: List[Optional[float]], prec=2, pct=False) -> str:
     vals = [v for v in vals if isinstance(v, (int, float))]
@@ -44,20 +56,6 @@ def load_results(results_dir: str) -> List[dict]:
         with open(p, encoding="utf-8") as f:
             out.append(json.load(f))
     return out
-
-
-def _collect(results, method_filter, exclude_ablations=False):
-    """Group metric dicts by (method, key) -> per-metric list across seeds/files."""
-    by = defaultdict(lambda: defaultdict(list))
-    for r in results:
-        if method_filter and method_filter not in r.get("method", ""):
-            continue
-        if exclude_ablations and str(r.get("run_id", "")).startswith("abl_"):
-            continue  # ablation runs share method "SIFLOW" but belong in Table 3, not Table 2
-        for key, m in r.get("metrics", {}).items():
-            for mk, mv in m.items():
-                by[(r["method"], key)][mk].append(mv)
-    return by
 
 
 def _step_key(key):
@@ -82,28 +80,59 @@ def _row(label, steps, by, key, cells=("gen_ppl", "mauve", "lambada_acc", "tok_p
     return f"{label} & {steps} & " + " & ".join(cell(c) for c in cells) + r" \\"
 
 
+def _group(results):
+    """Group non-ablation results by exact method -> key -> metric -> [values]."""
+    g = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for r in results:
+        if str(r.get("run_id", "")).startswith("abl_"):
+            continue  # ablation runs belong in Table 3
+        method = r.get("method", "")
+        for key, m in r.get("metrics", {}).items():
+            for mk, mv in m.items():
+                g[method][key][mk].append(mv)
+    return g
+
+
+def _rows_for(g, method, label, ascending=True):
+    """Emit one row per metric key of an exact method (sorted by numeric step/k)."""
+    if method not in g:
+        return []
+    out = []
+    for key in sorted(g[method].keys(), key=_step_key, reverse=not ascending):
+        out.append(_row(label, key.split("=")[-1], {key: g[method][key]}, key))
+    return out
+
+
 def main_rows(results) -> str:
+    g = _group(results)
     rows = []
-    # AR + teacher curve + SDTT (reproduced)
-    ar = _collect(results, "AR-")
-    for (method, key), by_metric in ar.items():
-        rows.append(_row(method.replace("AR-", "AR GPT-2 "), "$L$", {key: by_metric}, key))
-    teach = _collect(results, "teacher")
-    for (method, key), by_metric in sorted(teach.items(), key=lambda kv: -_step_key(kv[0][1])):
-        steps = key.split("=")[-1]
-        rows.append(_row("MDLM teacher~\\citep{sahoo2024mdlm}", steps, {key: by_metric}, key))
-    sdtt = _collect(results, "SDTT")
-    for (method, key), by_metric in sdtt.items():
-        rows.append(_row("SDTT~\\citep{deschenaux2025sdtt}", key.split("=")[-1], {key: by_metric}, key))
-    # reported baselines
+    # AR reference
+    for method in sorted(g):
+        if method.startswith("AR-"):
+            for key in g[method]:
+                rows.append(_row("AR GPT-2~\\citep{radford2019gpt2}", "$L$", {key: g[method][key]}, key))
+    # MDLM teacher step-curve (descending steps) + SDTT
+    rows += _rows_for(g, "teacher", TEACHER_LABEL["teacher"], ascending=False)
+    for method in sorted(g):
+        if method.startswith("SDTT"):
+            for key in g[method]:
+                rows.append(_row("SDTT~\\citep{deschenaux2025sdtt}", key.split("=")[-1], {key: g[method][key]}, key))
+    # reported-only baselines (daggered)
     for label, steps in REPORTED:
         rows.append(f"{label} & {steps} & -- & -- & -- & -- " + r"\\")
-    # SIFLOW main rows (ablation runs excluded -> they go to Table 3)
-    sf = _collect(results, "SIFLOW", exclude_ablations=True)
-    for (method, key), by_metric in sorted(sf.items(), key=lambda kv: _step_key(kv[0][1])):
-        if method != "SIFLOW":
-            continue
-        rows.append(_row("\\textbf{\\method{} (ours)}", key.split("=")[-1], {key: by_metric}, key))
+    # SIFLOW (MDLM primary) k-sweep
+    rows += _rows_for(g, "SIFLOW", SIFLOW_LABEL["SIFLOW"], ascending=True)
+    # Larger backbones (NB2): Dream-7B (-D) and LLaDA-8B (-L), each with its teacher ref
+    large = []
+    large += _rows_for(g, "teacher-D", TEACHER_LABEL["teacher-D"], ascending=False)
+    large += _rows_for(g, "SIFLOW-D", SIFLOW_LABEL["SIFLOW-D"], ascending=True)
+    large += _rows_for(g, "teacher-L", TEACHER_LABEL["teacher-L"], ascending=False)
+    large += _rows_for(g, "SIFLOW-L", SIFLOW_LABEL["SIFLOW-L"], ascending=True)
+    if large:
+        rows.append(r"\midrule")
+        rows.append(r"\multicolumn{6}{l}{\itshape Head-only distillation on larger backbones "
+                    r"(each on its native tokenizer; A100-40GB, NB2):} \\")
+        rows += large
     return "\n".join(rows) if rows else "-- & -- & -- & -- & -- & -- \\\\"
 
 

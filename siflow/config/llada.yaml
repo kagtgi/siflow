@@ -1,0 +1,26 @@
+# SIFLOW-L: LLaDA-8B teacher (LLaMA-style vocab ~126k), head-only on LLaDA's own
+# backbone. ~16 GB fp16 fits a single A100-40GB; reduced top-m support keeps the
+# large-vocab tensors small. Run in NB2 (notebooks/nb2_large_teachers.ipynb).
+defaults: default.yaml
+run_id: siflow_llada
+
+teacher:
+  kind: llada
+  name: GSAI-ML/LLaDA-8B-Base
+  dtype: bf16
+  auto_class: AutoModel        # LLaDA loads via AutoModel (trust_remote_code); .logits exposed
+  mask_token: 126336           # LLaDA has no tokenizer mask id; this is the fixed constant
+  attn_implementation: null
+
+data:
+  source: live                 # teacher runs live with reduced top-m support
+  seq_len: 256
+  tokens_path: runs/data/llada_256.npy
+  cache_dir: null
+  reduced_m: 128
+
+train:
+  batch_size: 16               # 40GB-safe (8B backbone ~16GB + activations + head)
+  micro_batch: 4
+  total_steps: 8000
+  lam_reg: 0.0                 # MDM regulariser is full-vocab only

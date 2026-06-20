@@ -1,4 +1,6 @@
 # SIFLOW primary study: MDLM-170M teacher (GPT-2 vocab), full-vocab exact loss.
+# Tiny teacher (~0.4 GB) -- the default batch (64) runs comfortably on A100-40GB.
+# Run in NB1 (notebooks/nb1_mdlm.ipynb).
 defaults: default.yaml
 run_id: siflow_mdlm
 
@@ -10,5 +12,5 @@ teacher:
 data:
   source: live
   seq_len: 256
-  tokens_path: runs/data/owt_gpt2_256.npy   # produced by run_1 (override per env)
+  tokens_path: runs/data/owt_gpt2_256.npy   # produced in NB1 (override per env)
   reduced_m: 0                              # exact full-vocab path

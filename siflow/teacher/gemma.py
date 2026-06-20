@@ -1,8 +1,10 @@
-"""DiffusionGemma teacher (SIFLOW-G).
+"""DiffusionGemma teacher (SIFLOW-G) -- NOT used in the default 2-notebook study.
 
-``google/diffusiongemma-26B-A4B-it`` -- Gemma-4 architecture, 25.2B-param MoE
-(~3.8B active), ~50 GB fp16 (fits a single A100-80GB). Gemma tokenizer.
-Used only by the offline cache builder; see :class:`HFMaskedDLMTeacher`.
+``google/diffusiongemma-26B-A4B-it`` -- Gemma-4 architecture, 25.2B-param MoE,
+~50 GB fp16. This EXCEEDS a single A100-40GB, so it is out of scope for the
+current single-GPU (A100-40GB, <12h) protocol and is retained only for future
+multi-GPU / 80GB work. The third teacher in the live study is LLaDA-8B (~16 GB);
+see :class:`siflow.teacher.llada.LLaDATeacher`.
 
 For the MoE backbone we default to eager attention; pass
 ``attn_implementation="flash_attention_2"`` in the config if available.

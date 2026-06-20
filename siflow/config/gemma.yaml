@@ -1,5 +1,7 @@
 # SIFLOW-G: DiffusionGemma-26B-A4B teacher (Gemma vocab ~256k, MoE), head-only.
-# ~50GB fp16 weights fit on an A100-80GB alongside the tiny head.
+# NOTE: ~50GB fp16 — does NOT fit a single A100-40GB. Out of scope for the default
+# 2-notebook (A100-40GB) study; kept for future 80GB / multi-GPU work only. The
+# live third teacher is LLaDA-8B (see config/llada.yaml).
 defaults: default.yaml
 run_id: siflow_gemma
 

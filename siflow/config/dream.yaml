@@ -1,5 +1,6 @@
 # SIFLOW-D: Dream-7B teacher (Qwen vocab ~152k), head-only on Dream's own backbone.
-# Reduced top-m support keeps the large-vocab tensors small.
+# ~14 GB fp16 fits a single A100-40GB; reduced top-m support keeps the large-vocab
+# tensors small. Run in NB2 (notebooks/nb2_large_teachers.ipynb).
 defaults: default.yaml
 run_id: siflow_dream
 
@@ -12,14 +13,14 @@ teacher:
   attn_implementation: null
 
 data:
-  source: live                 # set to "cache" + cache_dir to use run_5's precomputed shards
+  source: live                 # teacher runs live with reduced top-m support
   seq_len: 256
   tokens_path: runs/data/dream_256.npy
   cache_dir: null
   reduced_m: 128
 
 train:
-  batch_size: 32
+  batch_size: 16               # 40GB-safe (7B backbone ~14GB + activations + head)
   micro_batch: 4
-  total_steps: 15000
+  total_steps: 8000
   lam_reg: 0.0                  # MDM regulariser is full-vocab only

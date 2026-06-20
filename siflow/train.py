@@ -3,9 +3,9 @@
 Handles three data paths from one code path:
 
 * **MDLM, live, full-vocab** -- teacher runs each step; exact full-V loss.
-* **Dream / Gemma, live, reduced-support** -- teacher runs each step; loss on the
+* **Dream / LLaDA, live, reduced-support** -- teacher runs each step; loss on the
   top-``m`` union support + rest bucket (``data.reduced_m > 0``).
-* **Dream / Gemma, cached** -- targets + hidden states streamed from a shard cache
+* **Dream / LLaDA, cached** -- targets + hidden states streamed from a shard cache
   built by ``siflow.cache.build_cache`` (``data.source == "cache"``); the teacher
   backbone is never loaded, only its embedding ``E``.
 

@@ -2,7 +2,8 @@
 
 ``Dream-org/Dream-v0-Base-7B`` (or the Instruct variant) -- a 7B open masked DLM
 initialized from Qwen2.5-7B, ~14 GB in fp16/bf16. Qwen2.5 tokenizer (~152k vocab).
-Used only by the offline cache builder; see :class:`HFMaskedDLMTeacher`.
+Runs live on a single A100-40GB with reduced top-m support; see
+:class:`HFMaskedDLMTeacher`.
 """
 from __future__ import annotations
 
