@@ -8,10 +8,68 @@ on the fly -- no giant simplex cache is needed for the primary study.
 """
 from __future__ import annotations
 
+import itertools
 import os
 from typing import Optional
 
 import numpy as np
+
+# Streamed in order until one works. OpenWebText is preferred (the paper's corpus)
+# but it is a *script* dataset, which modern `datasets` (>=3.0, common on Colab)
+# refuses unless trust_remote_code is set -- and may drop entirely. So we fall back
+# to large, script-free, no-auth Parquet corpora. (path, config_name, text_key)
+_TEXT_DATASETS = [
+    ("Skylion007/openwebtext", None, "text"),         # true OWT (needs a script)
+    ("HuggingFaceFW/fineweb", "sample-10BT", "text"),  # reliable large Parquet stream
+    ("allenai/c4", "en", "text"),
+    ("stas/openwebtext-10k", None, "text"),            # tiny OWT Parquet (last resort)
+]
+
+
+def _id_dtype(tokenizer):
+    """Smallest uint that holds this tokenizer's ids. GPT-2 (~50k) fits uint16;
+    Qwen/Dream (~152k) and LLaMA/LLaDA (~126k) do NOT -> uint32, or their ids would
+    silently overflow/wrap. Unknown size -> uint32 (safe)."""
+    nvocab = 0
+    try:
+        nvocab = len(tokenizer)
+    except TypeError:
+        nvocab = int(getattr(tokenizer, "vocab_size", 0) or 0)
+    return np.uint16 if 0 < nvocab <= 65536 else np.uint32
+
+
+def _open_text_stream(preferred: Optional[str], split: str, streaming: bool):
+    """Return ``(iterator_of_examples, text_key, source_name)`` for the first text
+    dataset that actually streams. Tries the preferred dataset (with and without
+    ``trust_remote_code``), then the script-free fallbacks."""
+    from datasets import load_dataset
+
+    cands = []
+    seen = set()
+    for path, name, key in ([(preferred, None, "text")] if preferred else []) + _TEXT_DATASETS:
+        if path and path not in seen:
+            seen.add(path)
+            cands.append((path, name, key))
+    last_err: Optional[Exception] = None
+    for path, name, key in cands:
+        for trust in (False, True):
+            try:
+                kw = {"split": split, "streaming": streaming}
+                if name:
+                    kw["name"] = name
+                if trust:
+                    kw["trust_remote_code"] = True
+                ds = load_dataset(path, **kw)
+                it = iter(ds)
+                first = next(it)                       # force a real fetch (validates access)
+                if key not in first:                   # find any string field
+                    key = next((k for k, v in first.items() if isinstance(v, str)), key)
+                tag = f"{path}" + (f":{name}" if name else "")
+                print(f"[data] streaming corpus: {tag}")
+                return itertools.chain([first], it), key
+            except Exception as e:  # noqa: BLE001 - try the next dataset / trust flag
+                last_err = e
+    raise RuntimeError(f"could not stream any text dataset; last error: {last_err}")
 
 
 def build_token_chunks(
@@ -30,21 +88,21 @@ def build_token_chunks(
 
     ``skip_seqs`` discards the first N packed chunks before collecting -- use it to
     carve a disjoint validation set from the same stream (e.g. train uses
-    ``skip_seqs=0``, val uses ``skip_seqs=<train size>``).
+    ``skip_seqs=0``, val uses ``skip_seqs=<train size>``). Falls back across several
+    public corpora so it runs on any recent ``datasets`` without auth.
 
     Returns the number of chunks written (``N``)."""
-    from datasets import load_dataset
-
     eos = tokenizer.eos_token_id if add_eos and tokenizer.eos_token_id is not None else None
+    idt = _id_dtype(tokenizer)  # uint16 (GPT-2) vs uint32 (Dream/LLaDA) -- avoid id overflow
 
-    ds = load_dataset(dataset, split=split, streaming=streaming)
+    stream, text_key = _open_text_stream(dataset, split, streaming)
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
 
     buf: list[int] = []
     chunks: list[np.ndarray] = []
     n = 0
     skipped = 0
-    for ex in ds:
+    for ex in stream:
         text = ex.get(text_key) or ""
         if not text:
             continue
@@ -53,7 +111,7 @@ def build_token_chunks(
         if eos is not None:
             buf.append(eos)
         while len(buf) >= seq_len:
-            chunk = np.asarray(buf[:seq_len], dtype=np.uint16)
+            chunk = np.asarray(buf[:seq_len], dtype=idt)
             del buf[:seq_len]
             if skipped < skip_seqs:
                 skipped += 1
@@ -65,7 +123,11 @@ def build_token_chunks(
         if n >= target_seqs:
             break
 
-    arr = np.stack(chunks) if chunks else np.zeros((0, seq_len), dtype=np.uint16)
+    arr = np.stack(chunks) if chunks else np.zeros((0, seq_len), dtype=idt)
+    if arr.shape[0] == 0:
+        raise RuntimeError(
+            f"no token chunks produced for {out_path}: every corpus stream yielded no "
+            f"usable text (skip_seqs={skip_seqs}). Check network access / lower skip_seqs.")
     np.save(out_path, arr)
     return int(arr.shape[0])
 

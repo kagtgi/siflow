@@ -156,10 +156,10 @@ def build_nb1():
         code(SMOKE),
         code(SMOKE_PY),
         code("""# === Sizes (shrink any of these for a fast end-to-end smoke) ===
-N_TRAIN   = 160_000   # OWT training sequences (set 20_000 for a quick smoke)
+N_TRAIN   = 160_000   # training sequences (set 20_000 for a quick smoke)
 N_VAL     = 5_000
-STEPS     = 15000     # MDLM head training steps
-ABL_STEPS = 4000      # steps per ablation variant
+STEPS     = 12000     # MDLM head training steps
+ABL_STEPS = 3000      # steps per ablation variant
 print("sizes set")"""),
         code("""# === Data: tokenize OpenWebText (train + disjoint val for MAUVE) ===
 import os
@@ -178,14 +178,19 @@ ip = get_ipython()
 ip.system(f"python scripts/train.py --config siflow/config/mdlm.yaml --set "
           f"data.tokens_path={BASE}/data/owt_gpt2_256.npy "
           f"out_dir={BASE}/ckpt/mdlm run_id=siflow_mdlm train.total_steps={STEPS}")"""),
-        code("""# === Training curves ===
-from siflow.analysis.curves import load_jsonl, series
-import matplotlib.pyplot as plt
-rows = load_jsonl(f"{BASE}/ckpt/mdlm/train_log.jsonl")
-for k in ("satd", "vel", "mdm"):
-    xs, ys = series(rows, k)
-    if xs: plt.plot(xs, ys, label=k)
-plt.legend(); plt.xlabel("step"); plt.ylabel("loss"); plt.show()"""),
+        code("""# === Training curves (skips cleanly if the log isn't there yet) ===
+import os
+_log = f"{BASE}/ckpt/mdlm/train_log.jsonl"
+if os.path.exists(_log):
+    from siflow.analysis.curves import load_jsonl, series
+    import matplotlib.pyplot as plt
+    rows = load_jsonl(_log)
+    for k in ("satd", "vel", "mdm"):
+        xs, ys = series(rows, k)
+        if xs: plt.plot(xs, ys, label=k)
+    plt.legend(); plt.xlabel("step"); plt.ylabel("loss"); plt.title("MDLM head training"); plt.show()
+else:
+    print("no train log at", _log)"""),
         code("""# === Evaluate SIFLOW (k-sweep), MDLM teacher step-curve, and AR GPT-2 ===
 import os
 ip = get_ipython()
@@ -266,32 +271,37 @@ print(open(f"{BASE}/tables_auto.tex").read())"""),
 
 
 # LLaDA gets --no-mauve to stay comfortably inside one session; everything else identical.
+# Each artifact is guarded independently so a mid-session disconnect resumes cleanly:
+# tokens -> head train -> SIFLOW eval -> teacher-reference eval. Training auto-resumes
+# from its checkpoint; the teacher is a fresh subprocess each call, so VRAM is freed
+# between Dream and LLaDA (only one 7-8B model is ever resident).
 def _large_teacher_block(tag, kind, cfg, model_name, steps_var, ntok_var, extra_eval=""):
-    return f'''# === SIFLOW-{tag}: {model_name} (head-only, guarded + resumable) ===
+    return f'''# === SIFLOW-{tag}: {model_name} (head-only on a single 40GB card; guarded + resumable) ===
 import os
 from transformers import AutoTokenizer
 from siflow.data import build_token_chunks
 ip = get_ipython()
-if not os.path.exists(f"{{BASE}}/results/{kind}.json"):
+if os.path.exists(f"{{BASE}}/results/{kind}.json") and os.path.exists(f"{{BASE}}/results/{kind}_teacher.json"):
+    print("SIFLOW-{tag} already complete; skipping")
+else:
     tk = AutoTokenizer.from_pretrained("{model_name}", trust_remote_code=True)
     if not os.path.exists(f"{{BASE}}/data/{kind}_256.npy"):
-        build_token_chunks(tk, 256, {ntok_var}, f"{{BASE}}/data/{kind}_256.npy",
-                           dataset="Skylion007/openwebtext", split="train")
+        build_token_chunks(tk, 256, {ntok_var}, f"{{BASE}}/data/{kind}_256.npy", split="train")
     if not os.path.exists(f"{{BASE}}/data/{kind}_val.npy"):
-        build_token_chunks(tk, 256, 1_500, f"{{BASE}}/data/{kind}_val.npy",
-                           dataset="Skylion007/openwebtext", split="train", skip_seqs={ntok_var})
+        build_token_chunks(tk, 256, 1_500, f"{{BASE}}/data/{kind}_val.npy", split="train", skip_seqs={ntok_var})
     del tk
-    ip.system(f"python scripts/train.py --config siflow/config/{cfg}.yaml --set "
-              f"data.tokens_path={{BASE}}/data/{kind}_256.npy out_dir={{BASE}}/ckpt/{kind} "
-              f"run_id=siflow_{kind} train.total_steps={{{steps_var}}}")
-    ip.system(f"python scripts/evaluate.py --config siflow/config/{cfg}.yaml --system siflow --variant {tag} "
-              f"--ckpt-dir {{BASE}}/ckpt/{kind} --ref-tokens {{BASE}}/data/{kind}_val.npy "
-              f"--n-samples 500 --k-list 1 4 --straightness-n 0 {extra_eval}--out {{BASE}}/results/{kind}.json")
-    ip.system(f"python scripts/evaluate.py --config siflow/config/{cfg}.yaml --system teacher --variant {tag} "
-              f"--steps 64 --ref-tokens {{BASE}}/data/{kind}_val.npy --n-samples 300 {extra_eval}"
-              f"--out {{BASE}}/results/{kind}_teacher.json")
-else:
-    print("SIFLOW-{tag} already done; skipping")'''
+    if not os.path.exists(f"{{BASE}}/results/{kind}.json"):
+        ip.system(f"python scripts/train.py --config siflow/config/{cfg}.yaml --set "
+                  f"data.tokens_path={{BASE}}/data/{kind}_256.npy out_dir={{BASE}}/ckpt/{kind} "
+                  f"run_id=siflow_{kind} train.total_steps={{{steps_var}}}")
+        ip.system(f"python scripts/evaluate.py --config siflow/config/{cfg}.yaml --system siflow --variant {tag} "
+                  f"--ckpt-dir {{BASE}}/ckpt/{kind} --ref-tokens {{BASE}}/data/{kind}_val.npy --gen-batch 16 "
+                  f"--n-samples 500 --k-list 1 4 --straightness-n 0 {extra_eval}--out {{BASE}}/results/{kind}.json")
+    if not os.path.exists(f"{{BASE}}/results/{kind}_teacher.json"):
+        ip.system(f"python scripts/evaluate.py --config siflow/config/{cfg}.yaml --system teacher --variant {tag} "
+                  f"--steps 64 --ref-tokens {{BASE}}/data/{kind}_val.npy --gen-batch 16 --n-samples 300 {extra_eval}"
+                  f"--out {{BASE}}/results/{kind}_teacher.json")
+    print("SIFLOW-{tag} done")'''
 
 
 def build_nb2():

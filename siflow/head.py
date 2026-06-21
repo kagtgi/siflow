@@ -95,6 +95,11 @@ class VelocityHead(nn.Module):
 
     def delta_h(self, h: torch.Tensor, s: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
         """Hidden-space displacement, FiLM-conditioned on the interval."""
+        # The eval/generation path has no autocast, and teachers run in bf16 (so the
+        # hidden state is bf16) while the head's Linear params are fp32. Cast the
+        # hidden to the head's param dtype so F.linear never sees mixed dtypes.
+        # Under training autocast this is a no-op (autocast re-casts the matmul).
+        h = h.to(self.in_proj.weight.dtype)
         c = self.time(s, t)                              # [B, time_dim]
         gamma, beta = self.film(c).chunk(2, dim=-1)      # [B, bottleneck] each
         x = self.in_proj(h)                              # [B, L, bottleneck]

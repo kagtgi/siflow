@@ -54,6 +54,21 @@ def _ref_rope(x, cos, sin):
     return torch.cat([x1 * c - x2 * s, x1 * s + x2 * c], dim=-1)
 
 
+def test_head_accepts_bf16_hidden():
+    # Teachers run in bf16, so the hidden state is bf16, while the head's Linear
+    # params are fp32 and the eval path has no autocast. The head must reconcile
+    # dtypes itself or generation crashes with "mat1 and mat2 must have the same dtype".
+    from siflow.head import VelocityHead
+
+    V, H = 40, 32
+    head = VelocityHead(H, torch.randn(V, H), bottleneck=64)  # fp32 params
+    h = torch.randn(2, 5, H, dtype=torch.bfloat16)            # bf16 teacher hidden
+    s = torch.zeros(2)
+    t = torch.ones(2)
+    U = head(h, s, t)                                          # must not raise
+    assert U.shape == (2, 5, V)
+
+
 def test_rotary_matches_rotate_half_and_leaves_v():
     torch.manual_seed(0)
     B, L, H, D = 2, 5, 3, 8
