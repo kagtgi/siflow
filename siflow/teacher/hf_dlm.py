@@ -39,6 +39,9 @@ class HFMaskedDLMTeacher(Teacher):
         import transformers
         from transformers import AutoTokenizer
 
+        from ..flash_compat import ensure_flash_attn
+        ensure_flash_attn()  # some remote backbones import flash_attn with no fallback
+
         self.name = name
         self.device = torch.device(device) if device is not None else (
             torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")

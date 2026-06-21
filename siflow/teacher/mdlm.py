@@ -33,6 +33,9 @@ class MDLMTeacher(Teacher):
     ):
         from transformers import AutoModelForMaskedLM
 
+        from ..flash_compat import ensure_flash_attn
+        ensure_flash_attn()  # MDLM's remote DiT does a bare `import flash_attn`
+
         self.name = name
         self.device = torch.device(device) if device is not None else (
             torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")

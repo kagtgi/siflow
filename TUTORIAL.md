@@ -102,6 +102,10 @@ also compiles with no results — it shows `--` placeholders and figure-placehol
 
 ## 7. Troubleshooting
 
+- **`ImportError: ... requires ... flash_attn`** → handled automatically. MDLM's remote code hard-imports
+  `flash_attn`; SIFLOW registers a numerically-exact SDPA fallback (`siflow/flash_compat.py`) before the
+  teacher loads, so you do **not** need to `pip install flash-attn`. If you *have* a real flash-attn, it's
+  used instead. Nothing to do — just run the cell.
 - **CUDA OOM** → lower `train.micro_batch` (Dream/LLaDA default 4 → 2) via `--set train.micro_batch=2`
   on the relevant `!python scripts/train.py` line; lower `--gen-batch` in eval.
 - **Stops early** → expected near the limit; just re-run (see §4). Stages skip / training resumes.
