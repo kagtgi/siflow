@@ -18,6 +18,8 @@ to the shim. If a real ``flash_attn`` is importable, it is used unchanged.
 """
 from __future__ import annotations
 
+import importlib.machinery
+import importlib.util
 import math
 import sys
 import types
@@ -152,8 +154,16 @@ def _pad_input(hidden_states, indices, batch, seqlen):
 
 
 # --------------------------------------------------------------------------- #
+def _make_mod(name: str) -> types.ModuleType:
+    """Create a ModuleType whose __spec__ is set so importlib.util.find_spec()
+    doesn't raise ValueError: <name>.__spec__ is None (Python 3.12+)."""
+    mod = types.ModuleType(name)
+    mod.__spec__ = importlib.machinery.ModuleSpec(name, None)
+    return mod
+
+
 def _build_shim() -> types.ModuleType:
-    fa = types.ModuleType("flash_attn")
+    fa = _make_mod("flash_attn")
     fa.__siflow_shim__ = True
     fa.__version__ = "2.6.3"  # plausible version for any packaging.version checks
     fa.flash_attn_func = flash_attn_func
@@ -161,21 +171,21 @@ def _build_shim() -> types.ModuleType:
     fa.flash_attn_varlen_func = flash_attn_varlen_func
     fa.flash_attn_varlen_qkvpacked_func = flash_attn_varlen_qkvpacked_func
 
-    fai = types.ModuleType("flash_attn.flash_attn_interface")
+    fai = _make_mod("flash_attn.flash_attn_interface")
     for fn in (flash_attn_func, flash_attn_qkvpacked_func,
                flash_attn_varlen_func, flash_attn_varlen_qkvpacked_func):
         setattr(fai, fn.__name__, fn)
     fa.flash_attn_interface = fai
 
-    layers = types.ModuleType("flash_attn.layers")
-    rotary = types.ModuleType("flash_attn.layers.rotary")
+    layers = _make_mod("flash_attn.layers")
+    rotary = _make_mod("flash_attn.layers.rotary")
     rotary.apply_rotary_emb_qkv_ = apply_rotary_emb_qkv_
     rotary.apply_rotary_emb = apply_rotary_emb
     rotary.apply_rotary_emb_func = apply_rotary_emb
     layers.rotary = rotary
     fa.layers = layers
 
-    bert = types.ModuleType("flash_attn.bert_padding")
+    bert = _make_mod("flash_attn.bert_padding")
     bert.unpad_input = _unpad_input
     bert.pad_input = _pad_input
     bert.index_first_axis = _index_first_axis

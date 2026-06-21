@@ -3,6 +3,7 @@ the rotary must be the standard rotate-half RoPE (flash_attn's interleaved=False
 A wrong shim would silently corrupt MDLM's distillation targets, so we check both
 against independent references."""
 import math
+import sys
 
 import pytest
 
@@ -21,6 +22,28 @@ def test_ensure_registers_importable_shim():
     import flash_attn  # noqa: F401
     import flash_attn.layers.rotary  # noqa: F401
     from flash_attn.flash_attn_interface import flash_attn_varlen_qkvpacked_func as f  # noqa: F401
+
+
+def test_shim_modules_have_valid_spec():
+    """Python 3.12 importlib.util.find_spec() raises ValueError when __spec__ is None.
+    MDLM's check_imports calls find_spec, so every shim module needs a real ModuleSpec."""
+    import importlib.util
+
+    ensure_flash_attn()
+    for name in (
+        "flash_attn",
+        "flash_attn.flash_attn_interface",
+        "flash_attn.layers",
+        "flash_attn.layers.rotary",
+        "flash_attn.bert_padding",
+    ):
+        mod = sys.modules.get(name)
+        if mod is None:
+            continue
+        assert mod.__spec__ is not None, f"{name}.__spec__ is None — find_spec() would raise"
+        # must not raise on Python 3.12+
+        spec = importlib.util.find_spec(name)
+        assert spec is not None, f"find_spec('{name}') returned None"
 
 
 def _ref_attention(qkv, B, L):
